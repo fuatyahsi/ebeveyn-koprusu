@@ -1,0 +1,15 @@
+{
+  "scripts": {
+    "supabase:version": "supabase --version",
+    "supabase:start": "supabase start",
+    "supabase:reset": "supabase db reset",
+    "supabase:status": "supabase status",
+    "supabase:projects": "supabase projects list",
+    "supabase:link": "supabase link",
+    "supabase:push": "supabase db push",
+    "supabase:functions:deploy": "supabase functions deploy send-notification && supabase functions deploy schedule-reminders && supabase functions deploy generate-report-pdf && supabase functions deploy verify-report && supabase functions deploy revenuecat-webhook && supabase functions deploy generate-audit-hash && supabase functions deploy tone-assistant && supabase functions deploy ocr-expense-receipt && supabase functions deploy invite-family-member && supabase functions deploy external-response && supabase functions deploy expire-pending-requests"
+  },
+  "devDependencies": {
+    "supabase": "^2.98.2"
+  }
+}

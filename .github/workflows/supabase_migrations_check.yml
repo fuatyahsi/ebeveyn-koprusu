@@ -1,0 +1,18 @@
+name: Supabase Migrations Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check migration files
+        run: |
+          test -f supabase/migrations/0001_extensions.sql
+          test -f supabase/migrations/0006_rls_policies.sql
+          test -f supabase/migrations/0008_triggers_audit.sql
+          ! grep -R "TODO" supabase/migrations

@@ -1,0 +1,61 @@
+project_id = "ebeveyn_koprusu"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["ebeveynkoprusu://auth-callback"]
+jwt_expiry = 3600
+enable_signup = true
+
+[storage]
+enabled = true
+file_size_limit = "25MiB"
+
+[functions.send-notification]
+verify_jwt = true
+
+[functions.schedule-reminders]
+verify_jwt = false
+
+[functions.generate-report-pdf]
+verify_jwt = true
+
+[functions.verify-report]
+verify_jwt = false
+
+[functions.revenuecat-webhook]
+verify_jwt = false
+
+[functions.generate-audit-hash]
+verify_jwt = true
+
+[functions.tone-assistant]
+verify_jwt = true
+
+[functions.ocr-expense-receipt]
+verify_jwt = true
+
+[functions.invite-family-member]
+verify_jwt = true
+
+[functions.external-response]
+verify_jwt = false
+
+[functions.expire-pending-requests]
+verify_jwt = false
