@@ -14,10 +14,27 @@ import 'package:ebeveyn_koprusu/features/reports/presentation/screens/reports_sc
 import 'package:ebeveyn_koprusu/features/settings/presentation/screens/settings_screen.dart';
 import 'package:ebeveyn_koprusu/features/subscriptions/presentation/screens/subscriptions_screen.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/app_shell.dart';
+import 'package:ebeveyn_koprusu/core/services/supabase_service.dart';
 import 'package:go_router/go_router.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
+  redirect: (context, state) {
+    final client = SupabaseService.client;
+    if (client == null) return null;
+
+    final isSignedIn = client.auth.currentSession != null;
+    final isAuthRoute = state.matchedLocation == '/auth';
+    final isWelcomeRoute = state.matchedLocation == '/welcome';
+
+    if (!isSignedIn && !isAuthRoute && !isWelcomeRoute) {
+      return '/auth';
+    }
+    if (isSignedIn && isAuthRoute) {
+      return '/';
+    }
+    return null;
+  },
   routes: [
     GoRoute(path: '/', builder: (context, state) => const AppShell()),
     GoRoute(

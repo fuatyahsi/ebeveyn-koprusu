@@ -1,7 +1,9 @@
 import 'package:ebeveyn_koprusu/core/config/app_config.dart';
+import 'package:ebeveyn_koprusu/core/services/app_data_service.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -34,21 +36,31 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const SectionCard(
+          SectionCard(
             title: 'KVKK ve hesap',
             icon: Icons.privacy_tip_outlined,
             child: Column(
               children: [
-                ListTile(
+                const ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.download_outlined),
                   title: Text('Verilerimi indir'),
                 ),
-                ListTile(
+                const ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.delete_outline),
                   title: Text('Hesap silme talebi'),
                 ),
+                if (AppDataService.hasSession)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.logout),
+                    title: const Text('Çıkış yap'),
+                    onTap: () async {
+                      await AppDataService.signOut();
+                      if (context.mounted) context.go('/auth');
+                    },
+                  ),
               ],
             ),
           ),

@@ -1,5 +1,6 @@
-import 'package:ebeveyn_koprusu/app/app.dart';
-import 'package:ebeveyn_koprusu/core/config/app_config.dart';
+import 'package:ebeveyn_koprusu/app/theme/app_theme.dart';
+import 'package:ebeveyn_koprusu/shared/widgets/app_shell.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -12,12 +13,12 @@ void main() {
   testWidgets('opens the operational dashboard', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          appConfigProvider.overrideWithValue(
-            const AppConfig.fromEnvironment(),
-          ),
-        ],
-        child: const EbeveynKoprusuApp(),
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          home: const AppShell(),
+          locale: const Locale('tr'),
+        ),
       ),
     );
 

@@ -18,7 +18,7 @@ class SupabaseService {
   static SupabaseClient? get client {
     try {
       return Supabase.instance.client;
-    } on StateError {
+    } catch (_) {
       return null;
     }
   }

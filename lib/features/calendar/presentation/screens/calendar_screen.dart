@@ -1,10 +1,13 @@
 import 'package:ebeveyn_koprusu/app/theme/app_colors.dart';
 import 'package:ebeveyn_koprusu/app/theme/app_typography.dart';
+import 'package:ebeveyn_koprusu/core/models/domain_models.dart';
+import 'package:ebeveyn_koprusu/core/services/app_data_service.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/app_card.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/app_pill.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/screen_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
@@ -15,6 +18,73 @@ class CalendarScreen extends ConsumerStatefulWidget {
 
 class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   int _view = 0; // 0 = month, 1 = list
+  bool _loading = false;
+  List<CustodyEvent> _events = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEvents();
+  }
+
+  Future<void> _loadEvents() async {
+    if (!AppDataService.hasSession) return;
+    setState(() => _loading = true);
+    try {
+      final events = await AppDataService.fetchCustodyEvents();
+      if (!mounted) return;
+      setState(() => _events = events);
+    } catch (error) {
+      _showError(error);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _addEvent() async {
+    final draft = await showModalBottomSheet<_EventDraft>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => const _AddEventSheet(),
+    );
+    if (draft == null) return;
+
+    setState(() => _loading = true);
+    try {
+      final event = await AppDataService.addCustodyEvent(
+        title: draft.title,
+        startAt: draft.startAt,
+        endAt: draft.endAt,
+        location: draft.location,
+      );
+      if (!mounted) return;
+      setState(() {
+        _events = [..._events, event]
+          ..sort((a, b) => a.startAt.compareTo(b.startAt));
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Takvim kaydi eklendi.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (error) {
+      _showError(error);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _showError(Object error) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppDataService.friendlyError(error)),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,27 +94,60 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         padding: const EdgeInsets.only(bottom: 24),
         children: [
           ScreenHeader(
-            eyebrow: 'Velâyet takvimi',
-            title: 'Mayıs 2026',
-            trailing: _ViewSwitcher(
-              index: _view,
-              onChanged: (v) => setState(() => _view = v),
+            eyebrow: 'Velayet takvimi',
+            title: 'Mayis 2026',
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _AddButton(onTap: _loading ? null : _addEvent),
+                const SizedBox(width: 8),
+                _ViewSwitcher(
+                  index: _view,
+                  onChanged: (v) => setState(() => _view = v),
+                ),
+              ],
             ),
           ),
+          if (_loading) const LinearProgressIndicator(minHeight: 2),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
-              children: const [
-                _Legend(),
-                SizedBox(height: 6),
-                AppCard(padding: EdgeInsets.all(12), child: _MonthGrid()),
-                SizedBox(height: 14),
-                SectionLabel(label: 'Yaklaşan kayıtlar'),
-                _UpcomingList(),
+              children: [
+                const _Legend(),
+                const SizedBox(height: 6),
+                const AppCard(padding: EdgeInsets.all(12), child: _MonthGrid()),
+                const SizedBox(height: 14),
+                const SectionLabel(label: 'Yaklasan kayitlar'),
+                _UpcomingList(events: _events),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AddButton extends StatelessWidget {
+  const _AddButton({required this.onTap});
+
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Takvime ekle',
+      child: Material(
+        color: AppColors.ink,
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: const SizedBox.square(
+            dimension: 36,
+            child: Icon(Icons.add, size: 18, color: AppColors.paper),
+          ),
+        ),
       ),
     );
   }
@@ -159,7 +262,7 @@ class _MonthGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const weekHeaders = ['P', 'S', 'Ç', 'P', 'C', 'C', 'P'];
+    const weekHeaders = ['P', 'S', 'C', 'P', 'C', 'C', 'P'];
     final cells = List<int>.generate(35, (i) => i - 1); // -2..32 (offset 2)
 
     return Column(
@@ -263,101 +366,229 @@ class _DayBox extends StatelessWidget {
 }
 
 class _UpcomingList extends StatelessWidget {
-  const _UpcomingList();
+  const _UpcomingList({required this.events});
 
-  static const _items = <(String, String, String, String, PillTone, String)>[
-    (
-      'Cuma',
-      '17:00',
-      'Hafta sonu teslimi',
-      'Okul çıkışı · Anne → Baba',
-      PillTone.ochre,
-      '3 gün',
-    ),
-    (
-      'Pazar',
-      '18:00',
-      'Geri teslim',
-      'Park önü · Baba → Anne',
-      PillTone.sage,
-      '5 gün',
-    ),
-    (
-      '25 May',
-      '',
-      'Veli toplantısı',
-      '3-B sınıfı · 18:30',
-      PillTone.mute,
-      '11 gün',
-    ),
-  ];
+  final List<CustodyEvent> events;
 
   @override
   Widget build(BuildContext context) {
+    if (events.isEmpty) {
+      return AppCard(
+        child: Text(
+          'Henüz kayıt yok. Sağ üstteki + ile ilk teslim, görüşme veya okul kaydını ekleyebilirsin.',
+          style: AppTypography.ui(size: 13, color: AppColors.inkMute),
+        ),
+      );
+    }
+
+    final visibleEvents = events.take(6).toList();
     return AppCard(
       padding: EdgeInsets.zero,
       child: Column(
         children: [
-          for (var i = 0; i < _items.length; i++) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 56,
-                    child: Column(
-                      children: [
-                        Text(
-                          _items[i].$1,
-                          style: AppTypography.display(size: 18, height: 1),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _items[i].$2,
-                          style: AppTypography.mono(
-                            color: AppColors.inkMute,
-                            letter: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    width: 1,
-                    height: 36,
-                    color: AppColors.line,
-                    margin: const EdgeInsets.symmetric(horizontal: 14),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _items[i].$3,
-                          style: AppTypography.ui(
-                            size: 13.5,
-                            weight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _items[i].$4,
-                          style: AppTypography.ui(
-                            size: 11.5,
-                            color: AppColors.inkMute,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  AppPill(label: _items[i].$6, tone: _items[i].$5),
-                ],
-              ),
-            ),
-            if (i < _items.length - 1) const Divider(height: 1),
+          for (var i = 0; i < visibleEvents.length; i++) ...[
+            _UpcomingRow(event: visibleEvents[i]),
+            if (i < visibleEvents.length - 1) const Divider(height: 1),
           ],
         ],
       ),
     );
   }
+}
+
+class _UpcomingRow extends StatelessWidget {
+  const _UpcomingRow({required this.event});
+
+  final CustodyEvent event;
+
+  @override
+  Widget build(BuildContext context) {
+    final dayLabel = DateFormat('EEE', 'tr_TR').format(event.startAt);
+    final timeLabel = DateFormat('HH:mm', 'tr_TR').format(event.startAt);
+    final days = event.startAt.difference(DateTime.now()).inDays;
+    final pill = days <= 0 ? 'bugün' : '$days gün';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 56,
+            child: Column(
+              children: [
+                Text(
+                  dayLabel,
+                  style: AppTypography.display(size: 18, height: 1),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  timeLabel,
+                  style: AppTypography.mono(
+                    color: AppColors.inkMute,
+                    letter: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 36,
+            color: AppColors.line,
+            margin: const EdgeInsets.symmetric(horizontal: 14),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  event.title,
+                  style: AppTypography.ui(size: 13.5, weight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  event.location.isEmpty
+                      ? event.assignedParent
+                      : event.location,
+                  style: AppTypography.ui(size: 11.5, color: AppColors.inkMute),
+                ),
+              ],
+            ),
+          ),
+          AppPill(label: pill, tone: PillTone.ochre),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddEventSheet extends StatefulWidget {
+  const _AddEventSheet();
+
+  @override
+  State<_AddEventSheet> createState() => _AddEventSheetState();
+}
+
+class _AddEventSheetState extends State<_AddEventSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController(text: 'Teslim kaydı');
+  final _locationController = TextEditingController();
+  DateTime _date = DateTime.now().add(const Duration(days: 1));
+  TimeOfDay _time = const TimeOfDay(hour: 17, minute: 0);
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _locationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18, 18, 18, bottom + 18),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Takvime ekle', style: AppTypography.display(size: 30)),
+            const SizedBox(height: 14),
+            TextFormField(
+              controller: _titleController,
+              decoration: const InputDecoration(labelText: 'Baslik'),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Baslik zorunlu.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _locationController,
+              decoration: const InputDecoration(labelText: 'Konum / not'),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _pickDate,
+                    icon: const Icon(Icons.calendar_today_outlined),
+                    label: Text(DateFormat('d MMM', 'tr_TR').format(_date)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _pickTime,
+                    icon: const Icon(Icons.schedule_outlined),
+                    label: Text(_time.format(context)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _save,
+              icon: const Icon(Icons.add),
+              label: const Text('Kaydi ekle'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+      locale: const Locale('tr'),
+    );
+    if (picked != null) setState(() => _date = picked);
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(context: context, initialTime: _time);
+    if (picked != null) setState(() => _time = picked);
+  }
+
+  void _save() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final startAt = DateTime(
+      _date.year,
+      _date.month,
+      _date.day,
+      _time.hour,
+      _time.minute,
+    );
+    Navigator.of(context).pop(
+      _EventDraft(
+        title: _titleController.text,
+        location: _locationController.text,
+        startAt: startAt,
+        endAt: startAt.add(const Duration(hours: 1)),
+      ),
+    );
+  }
+}
+
+class _EventDraft {
+  const _EventDraft({
+    required this.title,
+    required this.location,
+    required this.startAt,
+    required this.endAt,
+  });
+
+  final String title;
+  final String location;
+  final DateTime startAt;
+  final DateTime endAt;
 }
