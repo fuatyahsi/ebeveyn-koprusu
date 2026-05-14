@@ -5,7 +5,6 @@ import 'package:ebeveyn_koprusu/core/providers/mock_data_provider.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/app_card.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/app_pill.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/screen_header.dart';
-import 'package:ebeveyn_koprusu/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -40,26 +39,6 @@ class ModuleDetailScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               ...children,
             ],
-            const SizedBox(height: 16),
-            SectionCard(
-              title: 'Done kriterleri',
-              icon: Icons.verified_outlined,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  _CheckLine('UI ekranı, loading/empty/error durumları hazır.'),
-                  _CheckLine(
-                    'CRUD katmanı Supabase repository ile bağlanacak şekilde ayrıldı.',
-                  ),
-                  _CheckLine(
-                    'RLS, audit log ve raporlama karşılığı migration dosyalarında tanımlı.',
-                  ),
-                  _CheckLine(
-                    'Eksik dış servis credential alanları .env.example içinde tutuluyor.',
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
@@ -75,9 +54,9 @@ class _ModuleHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = switch (module.status) {
-      ModuleStatus.scaffolded => ('İskelet hazır', PillTone.sage),
-      ModuleStatus.mock => ('Mock bağlı', PillTone.ochre),
-      ModuleStatus.needsCredentials => ('Credential gerekli', PillTone.terra),
+      ModuleStatus.scaffolded => ('Hazir', PillTone.sage),
+      ModuleStatus.mock => ('Demo', PillTone.ochre),
+      ModuleStatus.needsCredentials => ('Ayar gerekli', PillTone.terra),
     };
 
     return AppCard(
@@ -117,31 +96,6 @@ class _ModuleHeader extends StatelessWidget {
               weight: FontWeight.w400,
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CheckLine extends StatelessWidget {
-  const _CheckLine(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.check_circle_outline,
-            size: 18,
-            color: AppColors.sage,
-          ),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text)),
         ],
       ),
     );

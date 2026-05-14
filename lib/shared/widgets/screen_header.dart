@@ -30,12 +30,18 @@ class ScreenHeader extends StatelessWidget {
     final muted = dark
         ? AppColors.paper.withValues(alpha: 0.55)
         : AppColors.inkMute;
+    final canOpenDrawer =
+        !showBack && (Scaffold.maybeOf(context)?.hasDrawer ?? false);
 
     return Padding(
       padding: padding,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          if (canOpenDrawer) ...[
+            _HeaderDrawerButton(dark: dark),
+            const SizedBox(width: 10),
+          ],
           if (showBack) ...[
             _HeaderBackButton(
               dark: dark,
@@ -65,6 +71,39 @@ class ScreenHeader extends StatelessWidget {
           ),
           ?trailing,
         ],
+      ),
+    );
+  }
+}
+
+class _HeaderDrawerButton extends StatelessWidget {
+  const _HeaderDrawerButton({required this.dark});
+
+  final bool dark;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = dark ? AppColors.paper : AppColors.ink;
+    final bg = dark
+        ? AppColors.paper.withValues(alpha: 0.1)
+        : AppColors.paperWhite;
+    final border = dark
+        ? AppColors.paper.withValues(alpha: 0.18)
+        : AppColors.line;
+
+    return Tooltip(
+      message: 'Modüller',
+      child: Material(
+        color: bg,
+        shape: CircleBorder(side: BorderSide(color: border)),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () => Scaffold.of(context).openDrawer(),
+          child: SizedBox.square(
+            dimension: 38,
+            child: Icon(Icons.menu_rounded, size: 20, color: fg),
+          ),
+        ),
       ),
     );
   }

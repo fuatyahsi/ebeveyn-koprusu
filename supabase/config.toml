@@ -18,14 +18,24 @@ port = 54323
 
 [auth]
 enabled = true
-site_url = "http://localhost:3000"
-additional_redirect_urls = ["ebeveynkoprusu://auth-callback"]
+site_url = "ebeveynkoprusu://auth-callback"
+additional_redirect_urls = ["ebeveynkoprusu://auth-callback", "http://localhost:3000"]
 jwt_expiry = 3600
 enable_signup = true
 
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+max_frequency = "1m0s"
+otp_length = 8
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
 [storage]
 enabled = true
-file_size_limit = "25MiB"
+file_size_limit = "50MiB"
 
 [functions.send-notification]
 verify_jwt = true

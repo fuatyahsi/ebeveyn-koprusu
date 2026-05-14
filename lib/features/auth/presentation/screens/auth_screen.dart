@@ -54,6 +54,7 @@ class _AuthScreenState extends State<AuthScreen> {
           email: _emailController.text.trim(),
           password: _passwordController.text,
           data: {'full_name': _nameController.text.trim()},
+          emailRedirectTo: 'ebeveynkoprusu://auth-callback',
         );
 
         if (response.session == null) {

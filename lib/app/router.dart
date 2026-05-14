@@ -1,11 +1,14 @@
 import 'package:ebeveyn_koprusu/features/admin/presentation/screens/admin_screen.dart';
 import 'package:ebeveyn_koprusu/features/auth/presentation/screens/auth_screen.dart';
+import 'package:ebeveyn_koprusu/features/calendar/presentation/screens/calendar_screen.dart';
 import 'package:ebeveyn_koprusu/features/checklists/presentation/screens/checklists_screen.dart';
 import 'package:ebeveyn_koprusu/features/children/presentation/screens/children_screen.dart';
 import 'package:ebeveyn_koprusu/features/contacts/presentation/screens/contacts_screen.dart';
 import 'package:ebeveyn_koprusu/features/decisions/presentation/screens/decisions_screen.dart';
+import 'package:ebeveyn_koprusu/features/documents/presentation/screens/documents_screen.dart';
 import 'package:ebeveyn_koprusu/features/disputes/presentation/screens/disputes_screen.dart';
 import 'package:ebeveyn_koprusu/features/emergency/presentation/screens/emergency_screen.dart';
+import 'package:ebeveyn_koprusu/features/expenses/presentation/screens/expenses_screen.dart';
 import 'package:ebeveyn_koprusu/features/family/presentation/screens/family_screen.dart';
 import 'package:ebeveyn_koprusu/features/handover/presentation/screens/handover_screen.dart';
 import 'package:ebeveyn_koprusu/features/onboarding/presentation/screens/welcome_screen.dart';
@@ -46,6 +49,14 @@ final appRouter = GoRouter(
       builder: (context, state) => const WelcomeScreen(),
     ),
     GoRoute(path: '/auth', builder: (context, state) => const AuthScreen()),
+    GoRoute(
+      path: '/calendar',
+      builder: (context, state) => const CalendarScreen(),
+    ),
+    GoRoute(
+      path: '/expenses',
+      builder: (context, state) => const ExpensesScreen(),
+    ),
     GoRoute(path: '/family', builder: (context, state) => const FamilyScreen()),
     GoRoute(
       path: '/children',
@@ -58,6 +69,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/contacts',
       builder: (context, state) => const ContactsScreen(),
+    ),
+    GoRoute(
+      path: '/documents',
+      builder: (context, state) => const DocumentsScreen(),
     ),
     GoRoute(
       path: '/decisions',

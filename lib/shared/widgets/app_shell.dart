@@ -16,7 +16,6 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _index = 0;
 
   static const _screens = <Widget>[
@@ -29,24 +28,14 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: _scaffoldKey,
       backgroundColor: AppColors.paper,
-      endDrawer: const _ModuleSidebar(),
-      endDrawerEnableOpenDragGesture: true,
+      drawer: const _ModuleSidebar(),
+      drawerEnableOpenDragGesture: true,
       body: IndexedStack(index: _index, children: _screens),
       bottomNavigationBar: _BottomBar(
         active: _index,
         onTap: (i) => setState(() => _index = i),
       ),
-      floatingActionButton: FloatingActionButton.small(
-        heroTag: 'module-sidebar',
-        tooltip: 'Modüller',
-        onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
-        backgroundColor: AppColors.ink,
-        foregroundColor: AppColors.paper,
-        child: const Icon(Icons.menu_rounded),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
@@ -142,6 +131,7 @@ class _ModuleSidebar extends StatelessWidget {
     (Icons.child_care_outlined, 'Çocuk', '/children'),
     (Icons.handshake_outlined, 'Teslim', '/handover'),
     (Icons.fact_check_outlined, 'Onaylar', '/decisions'),
+    (Icons.folder_outlined, 'Belgeler', '/documents'),
     (Icons.contact_phone_outlined, 'Yakınlar', '/contacts'),
     (Icons.gavel_outlined, 'Uyuşmazlık', '/disputes'),
     (Icons.note_alt_outlined, 'Defter', '/journal'),

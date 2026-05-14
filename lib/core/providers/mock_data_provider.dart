@@ -124,6 +124,13 @@ final appModulesProvider = Provider<List<AppModule>>(
       acceptance: 'Kabul, ret, ek bilgi ve süre sonu akışları.',
     ),
     AppModule(
+      title: 'Belgeler',
+      route: '/documents',
+      icon: Icons.folder_outlined,
+      summary: 'Okul, sağlık, servis, masraf ve hukuki belge arşivi.',
+      acceptance: 'Dosyalar aile kapsamlı private storage içinde saklanır.',
+    ),
+    AppModule(
       title: 'Uyuşmazlık',
       route: '/disputes',
       icon: Icons.gavel_outlined,

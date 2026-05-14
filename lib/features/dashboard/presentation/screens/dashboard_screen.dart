@@ -24,7 +24,7 @@ class DashboardScreen extends ConsumerWidget {
               icon: Icons.add,
               bg: AppColors.sageSoft,
               fg: AppColors.sage,
-              onTap: () {},
+              onTap: () => context.push('/documents'),
             ),
           ),
           Padding(
@@ -344,6 +344,7 @@ class _QuickActions extends StatelessWidget {
         Icons.handshake_outlined,
         AppColors.sage,
         AppColors.sageSoft,
+        '/handover',
       ),
     ),
     (
@@ -352,6 +353,7 @@ class _QuickActions extends StatelessWidget {
         Icons.priority_high,
         AppColors.terra,
         Color(0x1FB65F46),
+        '/emergency',
       ),
     ),
     (
@@ -360,6 +362,7 @@ class _QuickActions extends StatelessWidget {
         Icons.receipt_long_outlined,
         AppColors.ochre,
         AppColors.ochreSoft,
+        '/expenses',
       ),
     ),
     (
@@ -368,6 +371,7 @@ class _QuickActions extends StatelessWidget {
         Icons.picture_as_pdf_outlined,
         AppColors.ink,
         AppColors.paperWhite,
+        '/reports',
       ),
     ),
   ];
@@ -387,7 +391,7 @@ class _QuickActions extends StatelessWidget {
             color: a.$1.bg,
             borderRadius: BorderRadius.circular(12),
             child: InkWell(
-              onTap: () {},
+              onTap: () => context.push(a.$1.route),
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding: const EdgeInsets.all(12),
@@ -427,11 +431,12 @@ class _QuickActions extends StatelessWidget {
 }
 
 class _QA {
-  const _QA(this.label, this.icon, this.fg, this.bg);
+  const _QA(this.label, this.icon, this.fg, this.bg, this.route);
   final String label;
   final IconData icon;
   final Color fg;
   final Color bg;
+  final String route;
 }
 
 class _PendingList extends StatelessWidget {
