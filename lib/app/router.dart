@@ -108,6 +108,12 @@ final appRouter = GoRouter(
       builder: (context, state) => const VisionaryFeaturesScreen(),
     ),
     GoRoute(
+      path: '/visionary/:featureKey',
+      builder: (context, state) => VisionFeatureScreen(
+        featureKey: state.pathParameters['featureKey'] ?? 'swap',
+      ),
+    ),
+    GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsScreen(),
     ),

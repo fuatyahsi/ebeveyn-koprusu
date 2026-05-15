@@ -2,10 +2,9 @@ import 'package:ebeveyn_koprusu/app/theme/app_colors.dart';
 import 'package:ebeveyn_koprusu/app/theme/app_typography.dart';
 import 'package:ebeveyn_koprusu/features/calendar/presentation/screens/calendar_screen.dart';
 import 'package:ebeveyn_koprusu/features/dashboard/presentation/screens/dashboard_screen.dart';
-import 'package:ebeveyn_koprusu/features/documents/presentation/screens/documents_screen.dart';
 import 'package:ebeveyn_koprusu/features/expenses/presentation/screens/expenses_screen.dart';
-import 'package:ebeveyn_koprusu/features/family/presentation/screens/family_screen.dart';
 import 'package:ebeveyn_koprusu/features/messages/presentation/screens/messages_screen.dart';
+import 'package:ebeveyn_koprusu/features/visionary/presentation/screens/visionary_features_screen.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/brand_mark.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -23,10 +22,10 @@ class _AppShellState extends State<AppShell> {
   static const _screens = <Widget>[
     DashboardScreen(),
     CalendarScreen(),
-    FamilyScreen(showBack: false),
+    VisionFeatureScreen(featureKey: 'swap', showBack: false),
     MessagesScreen(),
     ExpensesScreen(showBack: false),
-    DocumentsScreen(showBack: false),
+    VisionFeatureScreen(featureKey: 'quiet-hours', showBack: false),
   ];
 
   @override
@@ -36,11 +35,6 @@ class _AppShellState extends State<AppShell> {
       drawer: const _ModuleSidebar(),
       drawerEnableOpenDragGesture: true,
       body: IndexedStack(index: _index, children: _screens),
-      floatingActionButton: FloatingActionButton.small(
-        tooltip: 'Danışman',
-        onPressed: () => context.push('/visionary'),
-        child: const Icon(Icons.psychology_alt_outlined),
-      ),
       bottomNavigationBar: _BottomBar(
         active: _index,
         onTap: (i) => setState(() => _index = i),
@@ -57,10 +51,10 @@ class _BottomBar extends StatelessWidget {
   static const _items = <(IconData, IconData, String)>[
     (Icons.cottage_outlined, Icons.cottage, 'Bugün'),
     (Icons.calendar_month_outlined, Icons.calendar_month, 'Takvim'),
-    (Icons.groups_2_outlined, Icons.groups_2, 'Aile'),
+    (Icons.swap_horiz_rounded, Icons.swap_horiz_rounded, 'Takas'),
     (Icons.forum_outlined, Icons.forum, 'Mesaj'),
     (Icons.receipt_long_outlined, Icons.receipt_long, 'Masraf'),
-    (Icons.folder_outlined, Icons.folder, 'Belge'),
+    (Icons.nightlight_round_outlined, Icons.nightlight_round, 'Sessiz'),
   ];
 
   @override
@@ -138,6 +132,18 @@ class _ModuleSidebar extends StatelessWidget {
   const _ModuleSidebar();
 
   static const _items = <(IconData, String, String)>[
+    (Icons.auto_awesome_outlined, 'Vizyon merkezi', '/visionary'),
+    (Icons.swap_horiz_rounded, 'Gün takası', '/visionary/swap'),
+    (Icons.location_searching_outlined, 'Teslim sınırı', '/visionary/geofence'),
+    (Icons.account_balance_outlined, 'Banka taslağı', '/visionary/banking'),
+    (Icons.favorite_border_rounded, 'Uyum skoru', '/visionary/harmony'),
+    (Icons.school_outlined, 'Teen modu', '/visionary/teen'),
+    (Icons.child_friendly_outlined, 'Beden kartı', '/visionary/wardrobe'),
+    (Icons.print_outlined, 'Çocuk çıktısı', '/visionary/printouts'),
+    (Icons.nightlight_round_outlined, 'Sessiz zaman', '/visionary/quiet-hours'),
+    (Icons.forward_to_inbox_outlined, 'Evrak köprüsü', '/visionary/dropbox'),
+    (Icons.call_outlined, 'Uygulama içi arama', '/visionary/calls'),
+    (Icons.history_edu_outlined, 'Sıra hafızası', '/visionary/holiday-memory'),
     (Icons.groups_2_outlined, 'Aile', '/family'),
     (Icons.child_care_outlined, 'Çocuk', '/children'),
     (Icons.handshake_outlined, 'Teslim', '/handover'),
@@ -149,7 +155,6 @@ class _ModuleSidebar extends StatelessWidget {
     (Icons.emergency_outlined, 'Acil', '/emergency'),
     (Icons.checklist_outlined, 'Checklist', '/checklists'),
     (Icons.picture_as_pdf_outlined, 'Raporlar', '/reports'),
-    (Icons.auto_awesome_outlined, 'Vizyon', '/visionary'),
     (Icons.workspace_premium_outlined, 'Premium', '/subscriptions'),
     (Icons.settings_outlined, 'Ayarlar', '/settings'),
   ];

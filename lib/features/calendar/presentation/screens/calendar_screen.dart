@@ -103,7 +103,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               children: [
                 _AddButton(onTap: _loading ? null : _addEvent),
                 const SizedBox(width: 8),
-                _MemoryButton(onTap: () => context.push('/visionary')),
+                _MemoryButton(
+                  onTap: () => context.push('/visionary/holiday-memory'),
+                ),
                 const SizedBox(width: 8),
                 _ViewSwitcher(
                   index: _view,

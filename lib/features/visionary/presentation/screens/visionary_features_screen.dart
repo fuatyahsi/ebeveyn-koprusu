@@ -6,136 +6,155 @@ import 'package:ebeveyn_koprusu/shared/widgets/app_pill.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/screen_header.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
-class VisionaryFeaturesScreen extends StatefulWidget {
-  const VisionaryFeaturesScreen({super.key});
+class VisionaryFeaturesScreen extends StatelessWidget {
+  const VisionaryFeaturesScreen({super.key, this.showBack = true});
+
+  final bool showBack;
 
   @override
-  State<VisionaryFeaturesScreen> createState() =>
-      _VisionaryFeaturesScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.paper,
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 28),
+          children: [
+            ScreenHeader(
+              eyebrow: 'Canlıya hazırlık',
+              title: 'Vizyon',
+              showBack: showBack,
+              trailing: IconButton.filled(
+                tooltip: 'Yayın kontrolü',
+                onPressed: () => context.push('/reports'),
+                icon: const Icon(Icons.verified_outlined),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  const _VisionHero(),
+                  const SizedBox(height: 14),
+                  const SectionLabel(label: 'Canlı özellikler'),
+                  for (final feature in visionaryFeatureSpecs) ...[
+                    _FeatureEntryCard(feature: feature),
+                    const SizedBox(height: 10),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _VisionaryFeaturesScreenState extends State<VisionaryFeaturesScreen> {
-  bool _busy = false;
+class VisionFeatureScreen extends StatefulWidget {
+  const VisionFeatureScreen({
+    super.key,
+    required this.featureKey,
+    this.showBack = true,
+  });
 
-  Future<void> _openFeature(_VisionaryFeature feature) async {
-    final shouldActivate = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (context) => _FeatureDetailSheet(feature: feature),
-    );
-    if (shouldActivate == true) {
-      await _activateFeature(feature);
+  final String featureKey;
+  final bool showBack;
+
+  @override
+  State<VisionFeatureScreen> createState() => _VisionFeatureScreenState();
+}
+
+class _VisionFeatureScreenState extends State<VisionFeatureScreen> {
+  late final VisionFeatureSpec _feature = visionFeatureByKey(widget.featureKey);
+  bool _loading = false;
+  bool _saving = false;
+  List<VisionFeatureRecord> _records = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (!AppDataService.hasSession) return;
+    setState(() => _loading = true);
+    try {
+      final records = await AppDataService.fetchVisionFeatureRecords(
+        _feature.key,
+      );
+      if (!mounted) return;
+      setState(() => _records = records);
+    } catch (error) {
+      _showError(error);
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _activateFeature(_VisionaryFeature feature) async {
-    setState(() => _busy = true);
+  Future<void> _addRecord() async {
+    final draft = await showModalBottomSheet<_VisionRecordDraft>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => _AddVisionRecordSheet(feature: _feature),
+    );
+    if (draft == null) return;
+
+    setState(() => _saving = true);
     try {
-      switch (feature.action) {
-        case _VisionaryAction.swapRequest:
-          await AppDataService.addLiveRecord(
-            moduleKey: 'decisions',
-            title: 'Gün takası talebi',
-            detail:
-                'Önerilen gün ve karşılık gün aile onayına sunuldu. Sistem otomatik onay vermez.',
-          );
-          break;
-        case _VisionaryAction.mentorLog:
-          await AppDataService.addLiveRecord(
-            moduleKey: 'journal',
-            title: 'Ebeveyn asistanı sorusu',
-            detail:
-                'Pedagojik çerçevede cevaplanacak danışman sorusu. Hukuki tavsiye kapsamı dışındadır.',
-          );
-          break;
-        case _VisionaryAction.geofenceReminder:
-          await AppDataService.addLiveRecord(
-            moduleKey: 'handover',
-            title: 'Cihaz içi teslim hatırlatıcısı',
-            detail:
-                'Konum cihaz içinde değerlendirilir; canlı konum Supabase kaydına yazılmaz.',
-          );
-          break;
-        case _VisionaryAction.bankDraft:
-          await AppDataService.addLiveRecord(
-            moduleKey: 'decisions',
-            title: 'Açık bankacılık masraf taslağı',
-            detail:
-                'OAuth ile seçilecek tekil işlem masraf talebine dönüştürülmek üzere hazırlandı.',
-          );
-          break;
-        case _VisionaryAction.harmonyReport:
-          await AppDataService.createReport();
-          break;
-        case _VisionaryAction.teenConsent:
-          await AppDataService.addLiveRecord(
-            moduleKey: 'decisions',
-            title: 'Teen modu ebeveyn onayı',
-            detail:
-                '13+ salt okunur takvim erişimi için açık rıza ve kapsam onayı gerekir.',
-          );
-          break;
-        case _VisionaryAction.kidProfile:
-          await AppDataService.addLiveRecord(
-            moduleKey: 'journal',
-            title: 'Beden kartı güncelleme notu',
-            detail:
-                'Boy, kilo, ayakkabı ve ihtiyaç vitrini sağlık verisine girmeden takip edilir.',
-          );
-          break;
-        case _VisionaryAction.visualPrint:
-          await AppDataService.createReport();
-          break;
-        case _VisionaryAction.quietHours:
-          await AppDataService.addLiveRecord(
-            moduleKey: 'journal',
-            title: 'Sessiz zaman tercihi',
-            detail:
-                '21:00-08:00 arası acil olmayan mesajları erteleme kuralı taslağı.',
-          );
-          break;
-        case _VisionaryAction.dropBox:
-          await AppDataService.addLiveRecord(
-            moduleKey: 'contacts',
-            title: 'Öğretmen / doktor evrak köprüsü',
-            detail:
-                '48 saat geçerli tek yönlü belge yükleme bağlantısı hazırlanacak kişi.',
-          );
-          break;
-        case _VisionaryAction.callLog:
-          await AppDataService.addLiveRecord(
-            moduleKey: 'journal',
-            title: 'Uygulama içi arama meta kaydı',
-            detail:
-                'Ses kaydı tutulmadan yalnızca saat, süre ve durum bilgisinin raporlanması.',
-          );
-          break;
-        case _VisionaryAction.holidayMemory:
-          await AppDataService.createReport();
-          break;
-      }
+      final record = await AppDataService.createVisionFeatureRecord(
+        featureKey: _feature.key,
+        title: draft.title,
+        detail: draft.detail,
+        status: draft.status,
+        payload: {
+          'feature_title': _feature.title,
+          'surface': _feature.surface,
+          'created_from': 'vision_feature_screen',
+        },
+      );
       if (!mounted) return;
+      setState(() => _records = [record, ..._records]);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            '${feature.title} için canlı hazırlık kaydı oluşturuldu.',
-          ),
+          content: Text('${_feature.shortTitle} kaydı eklendi.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppDataService.friendlyError(error)),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _showError(error);
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Future<void> _setStatus(VisionFeatureRecord record, String status) async {
+    setState(() => _saving = true);
+    try {
+      await AppDataService.updateVisionFeatureRecordStatus(
+        id: record.id,
+        status: status,
+      );
+      await _load();
+    } catch (error) {
+      _showError(error);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _showError(Object error) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppDataService.friendlyError(error)),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -148,37 +167,41 @@ class _VisionaryFeaturesScreenState extends State<VisionaryFeaturesScreen> {
           padding: const EdgeInsets.only(bottom: 28),
           children: [
             ScreenHeader(
-              eyebrow: 'Güvenli gelecek katmanı',
-              title: 'Vizyon',
-              showBack: true,
-              trailing: _busy
-                  ? const SizedBox.square(
-                      dimension: 36,
-                      child: Padding(
-                        padding: EdgeInsets.all(8),
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  : IconButton.filled(
-                      tooltip: 'Rapor üret',
-                      onPressed: () => context.push('/reports'),
-                      icon: const Icon(Icons.picture_as_pdf_outlined),
-                    ),
+              eyebrow: _feature.kicker,
+              title: _feature.shortTitle,
+              showBack: widget.showBack,
+              trailing: _HeaderAddButton(
+                tooltip: _feature.primaryActionLabel,
+                onTap: _saving ? null : _addRecord,
+              ),
             ),
+            if (_loading || _saving)
+              const LinearProgressIndicator(minHeight: 2),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 children: [
-                  const _VisionHero(),
+                  _FeatureHero(feature: _feature),
+                  const SizedBox(height: 12),
+                  _HowToUseCard(feature: _feature),
                   const SizedBox(height: 14),
-                  const SectionLabel(label: '12 ileri özellik'),
-                  for (final feature in _visionaryFeatures) ...[
-                    _FeatureCard(
-                      feature: feature,
-                      onTap: _busy ? null : () => _openFeature(feature),
+                  SectionLabel(
+                    label: 'Canlı kayıtlar',
+                    action: TextButton.icon(
+                      onPressed: _saving ? null : _addRecord,
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Ekle'),
                     ),
-                    const SizedBox(height: 10),
-                  ],
+                  ),
+                  _RecordList(
+                    feature: _feature,
+                    records: _records,
+                    onStatus: _setStatus,
+                    busy: _saving,
+                  ),
+                  const SizedBox(height: 14),
+                  const SectionLabel(label: 'Canlı servis hazırlığı'),
+                  _ExternalServicesCard(feature: _feature),
                 ],
               ),
             ),
@@ -220,7 +243,7 @@ class _VisionHero extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Çocuk odaklı, veri-minimum, kanıta hazır deneyler',
+                  'Çalışır kayıt, net ekran, hazır servis',
                   style: AppTypography.display(
                     size: 27,
                     color: AppColors.paper,
@@ -232,10 +255,10 @@ class _VisionHero extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Bu alan ileri özellikleri tek tek güvenli bir MVP akışına indirir. Dış servis gerektiren işlemler önce hazırlık kaydı açar; canlı konum, banka şifresi, ses kaydı veya hukuki tavsiye üretmez.',
+            'Bu alan artık mock değil: her özellik kendi ekranında Supabase kaydı açar, durum değiştirir ve canlıya çıkmadan önce gereken dış servis bilgisini gösterir.',
             style: AppTypography.ui(
               size: 12.5,
-              color: AppColors.paper.withValues(alpha: 0.72),
+              color: AppColors.paper.withValues(alpha: 0.74),
               height: 1.35,
             ),
           ),
@@ -244,9 +267,9 @@ class _VisionHero extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: const [
-              _HeroChip(label: 'RLS uyumlu'),
-              _HeroChip(label: 'Audit izli'),
-              _HeroChip(label: 'Çocuk verisi sınırlı'),
+              _HeroChip(label: 'Ebeveyn asistanı kaldırıldı'),
+              _HeroChip(label: 'RLS + audit'),
+              _HeroChip(label: 'Canlı kayıt'),
             ],
           ),
         ],
@@ -281,11 +304,10 @@ class _HeroChip extends StatelessWidget {
   }
 }
 
-class _FeatureCard extends StatelessWidget {
-  const _FeatureCard({required this.feature, required this.onTap});
+class _FeatureEntryCard extends StatelessWidget {
+  const _FeatureEntryCard({required this.feature});
 
-  final _VisionaryFeature feature;
-  final VoidCallback? onTap;
+  final VisionFeatureSpec feature;
 
   @override
   Widget build(BuildContext context) {
@@ -293,21 +315,13 @@ class _FeatureCard extends StatelessWidget {
       color: AppColors.paperWhite,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
-        onTap: onTap,
+        onTap: () => context.push(feature.route),
         borderRadius: BorderRadius.circular(14),
         child: AppCard(
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: feature.tone,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(feature.icon, color: AppColors.ink, size: 21),
-              ),
+              _FeatureIcon(feature: feature),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -351,10 +365,472 @@ class _FeatureCard extends StatelessWidget {
   }
 }
 
-class _FeatureDetailSheet extends StatelessWidget {
-  const _FeatureDetailSheet({required this.feature});
+class _FeatureHero extends StatelessWidget {
+  const _FeatureHero({required this.feature});
 
-  final _VisionaryFeature feature;
+  final VisionFeatureSpec feature;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      tint: CardTint.ink,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: AppColors.paper.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: AppColors.paper.withValues(alpha: 0.14),
+                  ),
+                ),
+                child: Icon(feature.icon, color: AppColors.paper),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AppPill(label: feature.badge, tone: feature.pillTone),
+                    const SizedBox(height: 6),
+                    Text(
+                      feature.title,
+                      style: AppTypography.display(
+                        size: 30,
+                        color: AppColors.paper,
+                        height: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            feature.usageTip,
+            style: AppTypography.ui(
+              size: 12.5,
+              color: AppColors.paper.withValues(alpha: 0.74),
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FeatureIcon extends StatelessWidget {
+  const _FeatureIcon({required this.feature});
+
+  final VisionFeatureSpec feature;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 46,
+      height: 46,
+      decoration: BoxDecoration(
+        color: feature.tone,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(feature.icon, color: AppColors.ink, size: 21),
+    );
+  }
+}
+
+class _HowToUseCard extends StatelessWidget {
+  const _HowToUseCard({required this.feature});
+
+  final VisionFeatureSpec feature;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline, size: 18, color: feature.iconColor),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Nasıl kullanılır?',
+                  style: AppTypography.ui(size: 13.5, weight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (var i = 0; i < feature.steps.length; i++) ...[
+            _StepRow(index: i + 1, text: feature.steps[i]),
+            if (i < feature.steps.length - 1) const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StepRow extends StatelessWidget {
+  const _StepRow({required this.index, required this.text});
+
+  final int index;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 22,
+          height: 22,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.sageSoft,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            '$index',
+            style: AppTypography.mono(
+              size: 10,
+              color: AppColors.sage,
+              letter: 0,
+            ),
+          ),
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            text,
+            style: AppTypography.ui(
+              size: 12.5,
+              color: AppColors.inkSoft,
+              height: 1.32,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecordList extends StatelessWidget {
+  const _RecordList({
+    required this.feature,
+    required this.records,
+    required this.onStatus,
+    required this.busy,
+  });
+
+  final VisionFeatureSpec feature;
+  final List<VisionFeatureRecord> records;
+  final Future<void> Function(VisionFeatureRecord record, String status)
+  onStatus;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    if (records.isEmpty) {
+      return AppCard(
+        child: Text(
+          feature.emptyText,
+          style: AppTypography.ui(size: 13, color: AppColors.inkMute),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (var i = 0; i < records.length; i++) ...[
+          _RecordCard(
+            feature: feature,
+            record: records[i],
+            busy: busy,
+            onStatus: onStatus,
+          ),
+          if (i < records.length - 1) const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class _RecordCard extends StatelessWidget {
+  const _RecordCard({
+    required this.feature,
+    required this.record,
+    required this.busy,
+    required this.onStatus,
+  });
+
+  final VisionFeatureSpec feature;
+  final VisionFeatureRecord record;
+  final bool busy;
+  final Future<void> Function(VisionFeatureRecord record, String status)
+  onStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    final formatter = DateFormat('dd MMM HH:mm', 'tr');
+    final isDone = record.status == feature.doneStatus;
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _FeatureIcon(feature: feature),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      record.title,
+                      style: AppTypography.ui(
+                        size: 13.5,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      formatter.format(record.createdAt),
+                      style: AppTypography.mono(size: 9.5),
+                    ),
+                  ],
+                ),
+              ),
+              AppPill(
+                label: feature.statusLabel(record.status),
+                tone: isDone ? PillTone.sage : PillTone.ochre,
+              ),
+            ],
+          ),
+          if (record.detail.trim().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              record.detail,
+              style: AppTypography.ui(
+                size: 12.5,
+                color: AppColors.inkSoft,
+                height: 1.32,
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: feature.statuses.containsKey(record.status)
+                      ? record.status
+                      : feature.defaultStatus,
+                  decoration: const InputDecoration(
+                    labelText: 'Durum',
+                    isDense: true,
+                  ),
+                  items: [
+                    for (final entry in feature.statuses.entries)
+                      DropdownMenuItem(
+                        value: entry.key,
+                        child: Text(entry.value),
+                      ),
+                  ],
+                  onChanged: busy || isDone
+                      ? null
+                      : (value) {
+                          if (value != null) onStatus(record, value);
+                        },
+                ),
+              ),
+              const SizedBox(width: 10),
+              FilledButton.icon(
+                onPressed: busy || isDone
+                    ? null
+                    : () => onStatus(record, feature.doneStatus),
+                icon: const Icon(Icons.check, size: 17),
+                label: Text(isDone ? 'Tamam' : 'Tamamla'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExternalServicesCard extends StatelessWidget {
+  const _ExternalServicesCard({required this.feature});
+
+  final VisionFeatureSpec feature;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (feature.services.isEmpty)
+            _ServiceRow(
+              icon: Icons.check_circle_outline,
+              title: 'Ek dış üyelik gerekmiyor',
+              detail:
+                  'Bu ekran Supabase verisi ve cihaz içi izinlerle çalışır. Canlıya çıkışta sadece genel uygulama yayın adımları gerekir.',
+              env: const [],
+            )
+          else
+            for (var i = 0; i < feature.services.length; i++) ...[
+              _ServiceRow(
+                icon: feature.services[i].icon,
+                title: feature.services[i].title,
+                detail: feature.services[i].detail,
+                env: feature.services[i].env,
+              ),
+              if (i < feature.services.length - 1) const Divider(height: 18),
+            ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ServiceRow extends StatelessWidget {
+  const _ServiceRow({
+    required this.icon,
+    required this.title,
+    required this.detail,
+    required this.env,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+  final List<String> env;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: AppColors.sageSoft,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: AppColors.sage),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: AppTypography.ui(weight: FontWeight.w700)),
+              const SizedBox(height: 3),
+              Text(
+                detail,
+                style: AppTypography.ui(
+                  size: 12,
+                  color: AppColors.inkSoft,
+                  height: 1.32,
+                ),
+              ),
+              if (env.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final key in env)
+                      AppPill(label: key, tone: PillTone.mute),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeaderAddButton extends StatelessWidget {
+  const _HeaderAddButton({required this.tooltip, required this.onTap});
+
+  final String tooltip;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: AppColors.ink,
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: const SizedBox.square(
+            dimension: 36,
+            child: Icon(Icons.add, size: 18, color: AppColors.paper),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddVisionRecordSheet extends StatefulWidget {
+  const _AddVisionRecordSheet({required this.feature});
+
+  final VisionFeatureSpec feature;
+
+  @override
+  State<_AddVisionRecordSheet> createState() => _AddVisionRecordSheetState();
+}
+
+class _AddVisionRecordSheetState extends State<_AddVisionRecordSheet> {
+  late final TextEditingController _titleController = TextEditingController(
+    text: widget.feature.defaultTitle,
+  );
+  late final TextEditingController _detailController = TextEditingController(
+    text: widget.feature.defaultDetail,
+  );
+  late String _status = widget.feature.defaultStatus;
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _detailController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) return;
+    Navigator.of(context).pop(
+      _VisionRecordDraft(
+        title: title,
+        detail: _detailController.text.trim(),
+        status: _status,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -367,77 +843,68 @@ class _FeatureDetailSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: feature.tone,
-                    borderRadius: BorderRadius.circular(13),
-                  ),
-                  child: Icon(feature.icon, color: AppColors.ink),
-                ),
+                _FeatureIcon(feature: widget.feature),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        feature.kicker.toUpperCase(),
-                        style: AppTypography.mono(
-                          size: 9,
-                          letter: 1.6,
-                          color: AppColors.inkMute,
-                        ),
+                        widget.feature.primaryActionLabel,
+                        style: AppTypography.display(size: 28, height: 1),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(
-                        feature.title,
-                        style: AppTypography.display(size: 30, height: 1),
+                        widget.feature.kicker,
+                        style: AppTypography.mono(letter: 1.4),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            _DetailPanel(
-              icon: Icons.lightbulb_outline,
-              title: 'Konsept',
-              text: feature.concept,
+            const SizedBox(height: 16),
+            TextField(
+              controller: _titleController,
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(
+                labelText: widget.feature.titleFieldLabel,
+                prefixIcon: Icon(widget.feature.icon),
+              ),
             ),
             const SizedBox(height: 10),
-            _DetailPanel(
-              icon: Icons.dashboard_customize_outlined,
-              title: 'Arayüz',
-              text: feature.interface,
+            TextField(
+              controller: _detailController,
+              minLines: 3,
+              maxLines: 5,
+              decoration: InputDecoration(
+                labelText: widget.feature.detailFieldLabel,
+                alignLabelWithHint: true,
+              ),
             ),
             const SizedBox(height: 10),
-            _DetailPanel(
-              icon: Icons.verified_user_outlined,
-              title: 'Kısıt',
-              text: feature.guardrail,
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final chip in feature.chips)
-                  _SheetChip(label: chip, tone: feature.tone),
+            DropdownButtonFormField<String>(
+              initialValue: _status,
+              decoration: const InputDecoration(labelText: 'Başlangıç durumu'),
+              items: [
+                for (final entry in widget.feature.statuses.entries)
+                  DropdownMenuItem(value: entry.key, child: Text(entry.value)),
               ],
+              onChanged: (value) {
+                if (value != null) setState(() => _status = value);
+              },
             ),
             const SizedBox(height: 16),
             FilledButton.icon(
-              onPressed: () => Navigator.of(context).pop(true),
-              icon: Icon(feature.actionIcon),
-              label: Text(feature.actionLabel),
+              onPressed: _submit,
+              icon: const Icon(Icons.check),
+              label: const Text('Kaydı oluştur'),
             ),
             const SizedBox(height: 8),
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Şimdilik kapat'),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Vazgeç'),
             ),
           ],
         ),
@@ -446,352 +913,509 @@ class _FeatureDetailSheet extends StatelessWidget {
   }
 }
 
-class _DetailPanel extends StatelessWidget {
-  const _DetailPanel({
-    required this.icon,
+class _VisionRecordDraft {
+  const _VisionRecordDraft({
     required this.title,
-    required this.text,
+    required this.detail,
+    required this.status,
   });
 
-  final IconData icon;
   final String title;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.paperWhite,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.line),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: AppColors.sage),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: AppTypography.ui(weight: FontWeight.w700)),
-                const SizedBox(height: 4),
-                Text(
-                  text,
-                  style: AppTypography.ui(
-                    size: 12,
-                    color: AppColors.inkSoft,
-                    height: 1.32,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  final String detail;
+  final String status;
 }
 
-class _SheetChip extends StatelessWidget {
-  const _SheetChip({required this.label, required this.tone});
-
-  final String label;
-  final Color tone;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: tone,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.line),
-      ),
-      child: Text(
-        label,
-        style: AppTypography.ui(size: 11, weight: FontWeight.w600),
-      ),
-    );
-  }
-}
-
-enum _VisionaryAction {
-  swapRequest,
-  mentorLog,
-  geofenceReminder,
-  bankDraft,
-  harmonyReport,
-  teenConsent,
-  kidProfile,
-  visualPrint,
-  quietHours,
-  dropBox,
-  callLog,
-  holidayMemory,
-}
-
-class _VisionaryFeature {
-  const _VisionaryFeature({
+class VisionFeatureSpec {
+  const VisionFeatureSpec({
+    required this.key,
     required this.title,
+    required this.shortTitle,
     required this.kicker,
     required this.summary,
-    required this.concept,
-    required this.interface,
-    required this.guardrail,
+    required this.usageTip,
+    required this.steps,
     required this.icon,
     required this.tone,
     required this.badge,
     required this.pillTone,
-    required this.chips,
-    required this.action,
-    required this.actionLabel,
-    required this.actionIcon,
+    required this.primaryActionLabel,
+    required this.defaultTitle,
+    required this.defaultDetail,
+    required this.emptyText,
+    required this.statuses,
+    required this.defaultStatus,
+    required this.doneStatus,
+    required this.services,
+    required this.surface,
+    this.titleFieldLabel = 'Başlık',
+    this.detailFieldLabel = 'Detay',
   });
 
+  final String key;
   final String title;
+  final String shortTitle;
   final String kicker;
   final String summary;
-  final String concept;
-  final String interface;
-  final String guardrail;
+  final String usageTip;
+  final List<String> steps;
   final IconData icon;
   final Color tone;
   final String badge;
   final PillTone pillTone;
-  final List<String> chips;
-  final _VisionaryAction action;
-  final String actionLabel;
-  final IconData actionIcon;
+  final String primaryActionLabel;
+  final String defaultTitle;
+  final String defaultDetail;
+  final String emptyText;
+  final Map<String, String> statuses;
+  final String defaultStatus;
+  final String doneStatus;
+  final List<VisionExternalService> services;
+  final String surface;
+  final String titleFieldLabel;
+  final String detailFieldLabel;
+
+  String get route => '/visionary/$key';
+
+  Color get iconColor => switch (pillTone) {
+    PillTone.ochre => AppColors.ochre,
+    PillTone.terra => AppColors.terra,
+    _ => AppColors.sage,
+  };
+
+  String statusLabel(String status) => statuses[status] ?? status;
 }
 
-const _visionaryFeatures = <_VisionaryFeature>[
-  _VisionaryFeature(
+class VisionExternalService {
+  const VisionExternalService({
+    required this.title,
+    required this.detail,
+    required this.icon,
+    this.env = const [],
+  });
+
+  final String title;
+  final String detail;
+  final IconData icon;
+  final List<String> env;
+}
+
+VisionFeatureSpec visionFeatureByKey(String key) {
+  for (final feature in visionaryFeatureSpecs) {
+    if (feature.key == key) return feature;
+  }
+  return visionaryFeatureSpecs.first;
+}
+
+const _approvalStatuses = <String, String>{
+  'draft': 'Taslak',
+  'pending': 'Onay bekliyor',
+  'approved': 'Onaylandı',
+  'completed': 'Tamamlandı',
+};
+
+const _simpleStatuses = <String, String>{
+  'draft': 'Taslak',
+  'active': 'Aktif',
+  'completed': 'Tamamlandı',
+};
+
+const visionaryFeatureSpecs = <VisionFeatureSpec>[
+  VisionFeatureSpec(
+    key: 'swap',
     title: 'Akıllı takvim ve gün takası',
-    kicker: 'Smart swapping',
-    summary: 'Mahkeme takviminde gün değişimi talebi oluşturur.',
-    concept:
-        'Ebeveyn bir teslim veya görüşme gününü karşılık günle takas etmek için açık onay talebi başlatır.',
-    interface:
-        'Takvim kartı, önerilen tarih, karşılık tarih ve onay bekleyen durum etiketiyle görünür.',
-    guardrail:
-        'Sistem otomatik karar vermez; karşı tarafın açık onayı audit akışına düşmelidir.',
+    shortTitle: 'Gün takası',
+    kicker: 'Smart swap',
+    summary: 'Mahkeme takvimindeki günü karşılık günle takas talebine çevirir.',
+    usageTip:
+        'Takas talebi karşı tarafa açık onayla gider; sistem otomatik karar vermez. Her talep audit izine düşer ve onaylanınca takvimle ilişkilendirilir.',
+    steps: [
+      'Asıl günü ve önerilen karşılık günü yaz.',
+      'Gerekçeyi kısa ve nötr biçimde ekle.',
+      'Karşı taraf onaylayınca durumu Onaylandı veya Tamamlandı yap.',
+    ],
     icon: Icons.swap_horiz_rounded,
     tone: AppColors.sageSoft,
-    badge: 'Canlı',
+    badge: 'Alt bar',
     pillTone: PillTone.sage,
-    chips: ['Onaylar', 'Audit', 'Takvim'],
-    action: _VisionaryAction.swapRequest,
-    actionLabel: 'Takas talebi oluştur',
-    actionIcon: Icons.fact_check_outlined,
+    primaryActionLabel: 'Takas talebi oluştur',
+    defaultTitle: 'Cuma teslimini pazar karşılığıyla takas',
+    defaultDetail: 'Asıl gün: Cuma 17:00. Öneri: Pazar 12:00-18:00.',
+    emptyText: 'Henüz takas talebi yok. + ile ilk canlı talebi oluştur.',
+    statuses: _approvalStatuses,
+    defaultStatus: 'pending',
+    doneStatus: 'completed',
+    services: [],
+    surface: 'bottom',
+    titleFieldLabel: 'Takas başlığı',
+    detailFieldLabel: 'Asıl gün, karşılık gün ve gerekçe',
   ),
-  _VisionaryFeature(
-    title: 'Ebeveyn asistanı',
-    kicker: 'AI mentor',
-    summary: 'Pedagojik çerçevede güvenli danışman ekranı.',
-    concept:
-        'LLM destekli danışman, ebeveyn iletişimini yumuşatır ve pedagojik öneri üretir.',
-    interface:
-        'Soru kutusu, güvenlik notu, cevap kartı ve kişisel geçmiş alanı tek ekranda toplanır.',
-    guardrail:
-        'Hukuki tavsiye vermez; çocuğun adı, adresi veya canlı konum prompta gönderilmez.',
-    icon: Icons.psychology_alt_outlined,
-    tone: AppColors.ochreSoft,
-    badge: 'Edge',
-    pillTone: PillTone.ochre,
-    chips: ['LLM hazır', 'Kişisel günlük', 'Veri minimizasyonu'],
-    action: _VisionaryAction.mentorLog,
-    actionLabel: 'Danışman kaydı aç',
-    actionIcon: Icons.chat_bubble_outline,
-  ),
-  _VisionaryFeature(
+  VisionFeatureSpec(
+    key: 'geofence',
     title: 'Cihaz içi teslim hatırlatıcı',
+    shortTitle: 'Teslim sınırı',
     kicker: 'Geofence',
-    summary: 'Okul veya teslim noktasına yaklaşınca lokal uyarı.',
-    concept:
-        'Teslim noktası için cihaz içinde 100 metrelik hatırlatıcı alanı kurulur.',
-    interface:
-        'Teslim kartında konum adı, izin durumu ve bildirim testi butonu yer alır.',
-    guardrail:
-        'Canlı konum takibi yasaktır; koordinat kontrolü cihaz dışına çıkmaz.',
+    summary: 'Okul veya teslim noktasına yaklaşınca lokal bildirim üretir.',
+    usageTip:
+        'Konum cihaz içinde değerlendirilir. Canlı konum Supabase’e yazılmaz; sadece hatırlatıcı tercihi ve izin durumu kayıtlanır.',
+    steps: [
+      'Teslim noktası adını ve hatırlatma aralığını gir.',
+      'Telefonda konum ve lokal bildirim iznini aç.',
+      'Teslim günü hatırlatıcıyı Aktif olarak takip et.',
+    ],
     icon: Icons.location_searching_outlined,
     tone: AppColors.sageSoft,
     badge: 'Cihaz',
     pillTone: PillTone.sage,
-    chips: ['Local only', 'Bildirim', 'Konum kaydı yok'],
-    action: _VisionaryAction.geofenceReminder,
-    actionLabel: 'Hatırlatıcı kaydı oluştur',
-    actionIcon: Icons.notifications_active_outlined,
+    primaryActionLabel: 'Hatırlatıcı kur',
+    defaultTitle: 'Okul çıkışı teslim hatırlatıcısı',
+    defaultDetail: 'Atatürk İlkokulu çevresinde 100 metre, Cuma 16:45.',
+    emptyText: 'Henüz teslim hatırlatıcısı yok.',
+    statuses: {
+      'draft': 'Taslak',
+      'permission_needed': 'İzin gerekli',
+      'active': 'Aktif',
+      'completed': 'Tamamlandı',
+    },
+    defaultStatus: 'permission_needed',
+    doneStatus: 'completed',
+    services: [
+      VisionExternalService(
+        title: 'Android/iOS izinleri',
+        detail:
+            'Konum ve lokal bildirim izinleri mağaza açıklamasıyla uyumlu olmalı. Sunucuya canlı konum gönderilmeyecek.',
+        icon: Icons.phonelink_lock_outlined,
+        env: ['ANDROID_FINE_LOCATION', 'IOS_LOCATION_WHEN_IN_USE'],
+      ),
+    ],
+    surface: 'sidebar',
+    titleFieldLabel: 'Hatırlatıcı adı',
+    detailFieldLabel: 'Konum, zaman ve uyarı notu',
   ),
-  _VisionaryFeature(
+  VisionFeatureSpec(
+    key: 'banking',
     title: 'Açık bankacılık masraf taslağı',
+    shortTitle: 'Banka taslağı',
     kicker: 'Open banking',
     summary: 'Seçili banka işlemini masraf talebine dönüştürür.',
-    concept:
-        'OAuth sonrası yalnızca kullanıcının seçtiği tekil okul/sağlık/servis işlemi masrafa dönüşür.',
-    interface:
-        'Masraf ekranında Bankadan Çek butonu, işlem seçici ve taslak önizlemesi bulunur.',
-    guardrail:
-        'Banka şifresi tutulmaz; karşı taraf tüm ekstreyi değil sadece gönderilen masrafı görür.',
+    usageTip:
+        'Kullanıcı OAuth ile bağlanır ve sadece seçtiği tekil işlemi masraf taslağına çevirir. Banka şifresi veya tam ekstre uygulamada tutulmaz.',
+    steps: [
+      'Açık bankacılık sağlayıcısından uygulama ve redirect URL oluştur.',
+      'Kullanıcının seçtiği işlemi masraf taslağı olarak kaydet.',
+      'Taslağı masraf ekranında onaya gönder.',
+    ],
     icon: Icons.account_balance_outlined,
     tone: AppColors.ochreSoft,
-    badge: 'OAuth',
+    badge: 'API',
     pillTone: PillTone.ochre,
-    chips: ['Taslak', 'OAuth', 'Masraf'],
-    action: _VisionaryAction.bankDraft,
-    actionLabel: 'Masraf taslağı aç',
-    actionIcon: Icons.receipt_long_outlined,
+    primaryActionLabel: 'Masraf taslağı aç',
+    defaultTitle: 'Banka işleminden servis ücreti',
+    defaultDetail:
+        'İşlem seçildiğinde tutar, tarih ve açıklama buraya düşecek.',
+    emptyText: 'Henüz banka masraf taslağı yok.',
+    statuses: {
+      'draft': 'Taslak',
+      'provider_needed': 'Sağlayıcı gerekli',
+      'ready': 'Hazır',
+      'completed': 'Masrafa dönüştü',
+    },
+    defaultStatus: 'provider_needed',
+    doneStatus: 'completed',
+    services: [
+      VisionExternalService(
+        title: 'Lisanslı açık bankacılık sağlayıcısı',
+        detail:
+            'Canlı bağlantı için sağlayıcı hesabı, client ID, secret ve redirect URL gerekli. Türkiye’de yetkili sağlayıcıyla ilerlenmeli.',
+        icon: Icons.account_balance_wallet_outlined,
+        env: [
+          'OPEN_BANKING_PROVIDER',
+          'OPEN_BANKING_CLIENT_ID',
+          'OPEN_BANKING_CLIENT_SECRET',
+        ],
+      ),
+    ],
+    surface: 'home',
+    titleFieldLabel: 'Taslak başlığı',
+    detailFieldLabel: 'İşlem açıklaması veya banka notu',
   ),
-  _VisionaryFeature(
+  VisionFeatureSpec(
+    key: 'harmony',
     title: 'Pozitif iletişim skoru',
+    shortTitle: 'Uyum skoru',
     kicker: 'Harmony score',
-    summary: 'Ailenin ortak uyumunu motivasyonel dille gösterir.',
-    concept:
-        'İtirazsız masraflar, sakin mesajlar ve zamanında teslimler aylık aile skoruna dönüşür.',
-    interface:
-        'Ana ekranda küçük bir skor kartı, trend oku ve “bu ay iyi gidiyor” metni gösterilir.',
-    guardrail:
-        'Skor kişilere karşı silah değildir; sadece ailenin toplam uyum göstergesidir.',
+    summary: 'Ailenin ortak uyumunu motivasyonel dille takip eder.',
+    usageTip:
+        'Skor kişileri puanlamak için değil, aile akışının toplam sakinliğini göstermek için kullanılır. Rapor dili suçlayıcı olmaz.',
+    steps: [
+      'Aylık teslim, mesaj, masraf ve itiraz sinyallerini özetle.',
+      'Kişi bazlı değil aile bazlı skor kaydı üret.',
+      'Skoru ana sayfada ve raporda motivasyonel dille göster.',
+    ],
     icon: Icons.favorite_border_rounded,
     tone: AppColors.sageSoft,
-    badge: 'Rapor',
+    badge: 'Ana sayfa',
     pillTone: PillTone.sage,
-    chips: ['Dashboard', 'Motivasyon', 'Aile skoru'],
-    action: _VisionaryAction.harmonyReport,
-    actionLabel: 'Uyum raporu üret',
-    actionIcon: Icons.picture_as_pdf_outlined,
+    primaryActionLabel: 'Uyum özeti oluştur',
+    defaultTitle: 'Mayıs aile uyum özeti',
+    defaultDetail:
+        'Zamanında teslim, itirazsız masraf ve sakin mesaj sinyalleri.',
+    emptyText: 'Henüz uyum skoru kaydı yok.',
+    statuses: _simpleStatuses,
+    defaultStatus: 'draft',
+    doneStatus: 'completed',
+    services: [
+      VisionExternalService(
+        title: 'Supabase zamanlanmış hesaplama',
+        detail:
+            'Canlıda edge function veya cron ile aylık skor kaydı üretilecek. Şimdiki ekran manuel canlı kayıt açar.',
+        icon: Icons.schedule_outlined,
+        env: ['SUPABASE_SERVICE_ROLE_KEY'],
+      ),
+    ],
+    surface: 'home',
+    titleFieldLabel: 'Skor dönemi',
+    detailFieldLabel: 'Skoru etkileyen sinyaller',
   ),
-  _VisionaryFeature(
+  VisionFeatureSpec(
+    key: 'teen',
     title: 'Teen modu',
+    shortTitle: 'Teen modu',
     kicker: '13+ salt okunur',
     summary: 'Ergen çocuk için sınırlı takvim ve talep ekranı.',
-    concept:
-        '13 yaş üzeri çocuk sadece kendi takvimini görür ve ebeveyn onayına talep bırakabilir.',
-    interface:
-        'Basit giriş, Takvimim ekranı ve Talep Ekle butonu dışında veri erişimi yoktur.',
-    guardrail:
-        'Açık ebeveyn rızası gerekir; mesaj ve masraf erişimi kesinlikle kapalıdır.',
+    usageTip:
+        'Teen modu açık ebeveyn rızasıyla çalışır. Çocuk sadece kendi takvimini görür ve talep bırakır; mesaj, masraf ve belge erişimi kapalıdır.',
+    steps: [
+      'Ebeveyn rızasını ve yaş uygunluğunu kayıt altına al.',
+      'Çocuğa salt okunur takvim erişimi ver.',
+      'Çocuğun taleplerini ebeveyn onayına düşür.',
+    ],
     icon: Icons.school_outlined,
     tone: AppColors.paperWhite,
     badge: 'Rıza',
     pillTone: PillTone.mute,
-    chips: ['Salt okunur', 'KVKK/COPPA', 'Takvim'],
-    action: _VisionaryAction.teenConsent,
-    actionLabel: 'Onay talebi oluştur',
-    actionIcon: Icons.verified_user_outlined,
+    primaryActionLabel: 'Teen erişimi aç',
+    defaultTitle: 'Deniz için salt okunur takvim',
+    defaultDetail:
+        'Erişim kapsamı: Takvimim ve Talep Ekle. Mesaj/masraf kapalı.',
+    emptyText: 'Henüz teen modu kaydı yok.',
+    statuses: _approvalStatuses,
+    defaultStatus: 'pending',
+    doneStatus: 'completed',
+    services: [],
+    surface: 'sidebar',
+    titleFieldLabel: 'Erişim başlığı',
+    detailFieldLabel: 'Yaş, kapsam ve rıza notu',
   ),
-  _VisionaryFeature(
+  VisionFeatureSpec(
+    key: 'wardrobe',
     title: 'Beden kartı ve ihtiyaç vitrini',
+    shortTitle: 'Beden kartı',
     kicker: 'Kids wardrobe',
-    summary: 'Boy, ayakkabı, kıyafet ve ihtiyaç takibi.',
-    concept:
-        'Çocuğun pratik beden bilgileri ve açık ihtiyaçları iki ebeveyn tarafından güncellenir.',
-    interface:
-        'Çocuk ekranında beden kartı, ihtiyaç listesi ve satın alındı durumu birlikte görünür.',
-    guardrail:
-        'Sağlık teşhisi tutulmaz; bilgiler fiziksel ölçü ve ihtiyaç düzeyinde kalır.',
+    summary: 'Boy, ayakkabı, kıyafet ve ihtiyaç takibini ortaklaştırır.',
+    usageTip:
+        'Bu ekran sağlık verisi tutmaz; pratik beden ölçüsü ve ihtiyaç bilgisini iki ebeveynin aynı yerden güncellemesi için kullanılır.',
+    steps: [
+      'Güncel beden veya ihtiyaç bilgisini yaz.',
+      'Alınacak, alındı veya güncellendi durumunu seç.',
+      'İhtiyaç kapanınca Tamamlandı olarak işaretle.',
+    ],
     icon: Icons.child_friendly_outlined,
     tone: AppColors.sageSoft,
-    badge: 'Profil',
+    badge: 'Ana sayfa',
     pillTone: PillTone.sage,
-    chips: ['Çocuk', 'İhtiyaç', 'Bildirim'],
-    action: _VisionaryAction.kidProfile,
-    actionLabel: 'Beden kartı notu aç',
-    actionIcon: Icons.note_alt_outlined,
+    primaryActionLabel: 'Beden/ ihtiyaç ekle',
+    defaultTitle: 'Ayakkabı 32 numara güncellendi',
+    defaultDetail: 'Spor ayakkabı ihtiyacı var. Mevsimlik mont tamam.',
+    emptyText: 'Henüz beden veya ihtiyaç kaydı yok.',
+    statuses: {
+      'draft': 'Taslak',
+      'needed': 'İhtiyaç',
+      'bought': 'Alındı',
+      'completed': 'Güncellendi',
+    },
+    defaultStatus: 'needed',
+    doneStatus: 'completed',
+    services: [],
+    surface: 'home',
+    titleFieldLabel: 'Beden veya ihtiyaç',
+    detailFieldLabel: 'Ölçü, adet, mevsim veya not',
   ),
-  _VisionaryFeature(
+  VisionFeatureSpec(
+    key: 'printouts',
     title: 'Görsel çocuk takvimi',
+    shortTitle: 'Çıktı',
     kicker: 'Print out',
-    summary: 'Çocuğun odasına asılabilecek ikonlu PDF.',
-    concept:
-        'Mevcut takvim renkli, yatay ve çocuğun okuyabileceği ikonlarla PDF çıktısına dönüşür.',
-    interface:
-        'Takvimde Çocuk Çıktısı butonu, ay seçici ve yazdırma önizlemesi yer alır.',
-    guardrail:
-        'PDF cihaz içinde üretilir; Edge Function veya dış servise çocuk takvimi gönderilmez.',
+    summary: 'Çocuğun odasına asılabilecek ikonlu PDF hazırlığı.',
+    usageTip:
+        'Takvim verisi cihaz içinde PDF’e dönüşür. Çocuğun okuyacağı sade ikonlar ve renkler kullanılır; dış servise çocuk takvimi gönderilmez.',
+    steps: [
+      'Ay ve görünüm tipini seç.',
+      'PDF önizleme kaydını oluştur.',
+      'Hazır olunca yazdırma veya paylaşma akışına geç.',
+    ],
     icon: Icons.print_outlined,
     tone: AppColors.ochreSoft,
     badge: 'PDF',
     pillTone: PillTone.ochre,
-    chips: ['Cihaz içi', 'PDF', 'Takvim'],
-    action: _VisionaryAction.visualPrint,
-    actionLabel: 'PDF hazırlık raporu üret',
-    actionIcon: Icons.print_outlined,
+    primaryActionLabel: 'PDF çıktısı hazırla',
+    defaultTitle: 'Mayıs çocuk takvimi',
+    defaultDetail: 'İkonlu teslim günleri, okul ve özel günler dahil.',
+    emptyText: 'Henüz çocuk takvimi çıktısı yok.',
+    statuses: {'draft': 'Taslak', 'preview': 'Önizleme', 'completed': 'Hazır'},
+    defaultStatus: 'preview',
+    doneStatus: 'completed',
+    services: [],
+    surface: 'sidebar',
+    titleFieldLabel: 'Çıktı başlığı',
+    detailFieldLabel: 'Ay, görünüm ve dahil edilecek bilgiler',
   ),
-  _VisionaryFeature(
+  VisionFeatureSpec(
+    key: 'quiet-hours',
     title: 'Sessiz zaman',
+    shortTitle: 'Sessiz zaman',
     kicker: 'Quiet hours',
     summary: 'Gece mesajlarını acil değilse sabaha erteler.',
-    concept:
-        'Kullanıcı sessiz saat aralığı seçer; acil olmayan mesajlar saygılı biçimde ertelenir.',
-    interface:
-        'Mesaj gönderirken sessiz saat uyarısı, Acil seçeneği ve erteleme özeti gösterilir.',
-    guardrail:
-        'Acil bayrağı audit ve uyuşmazlık raporuna iz bırakır; suistimal görünür olur.',
+    usageTip:
+        'Sessiz zaman karşı tarafı susturmaz; acil olmayan mesajı saygılı biçimde erteler. Acil işareti audit izine girer.',
+    steps: [
+      'Sessiz saat aralığını belirle.',
+      'Acil istisnasını hangi koşulda kullanacağını yaz.',
+      'Kuralı Aktif yap ve mesaj ekranında uygula.',
+    ],
     icon: Icons.nightlight_round_outlined,
     tone: AppColors.paperWhite,
-    badge: 'Sınır',
+    badge: 'Alt bar',
     pillTone: PillTone.mute,
-    chips: ['Mesaj', 'Acil bayrak', 'Audit'],
-    action: _VisionaryAction.quietHours,
-    actionLabel: 'Sessiz saat kaydı aç',
-    actionIcon: Icons.schedule_outlined,
+    primaryActionLabel: 'Sessiz saat kuralı ekle',
+    defaultTitle: '21:00-08:00 sessiz zaman',
+    defaultDetail: 'Acil olmayan mesajlar sabah bildirimine ertelensin.',
+    emptyText: 'Henüz sessiz zaman kuralı yok.',
+    statuses: _simpleStatuses,
+    defaultStatus: 'active',
+    doneStatus: 'completed',
+    services: [
+      VisionExternalService(
+        title: 'Push bildirim planı',
+        detail:
+            'Canlıda FCM ile acil/ertelenmiş bildirim ayrımı yapılacak. Kullanıcı tercihleri Supabase’de tutulur.',
+        icon: Icons.notifications_active_outlined,
+        env: ['FCM_SERVER_KEY', 'SUPABASE_SERVICE_ROLE_KEY'],
+      ),
+    ],
+    surface: 'bottom',
+    titleFieldLabel: 'Kural adı',
+    detailFieldLabel: 'Saat aralığı ve acil istisnası',
   ),
-  _VisionaryFeature(
+  VisionFeatureSpec(
+    key: 'dropbox',
     title: 'Tek yönlü evrak köprüsü',
-    kicker: 'Drop box',
-    summary: 'Öğretmen veya doktor linkle belge yükler.',
-    concept:
-        'Üçüncü kişi uygulamaya girmeden süreli linkle tek yönlü belge bırakabilir.',
-    interface: 'Kişi, süre, kategori ve link durumu kartlarıyla yönetilir.',
-    guardrail:
-        'Link süreli olmalı; yüklenen belge şeffaflık için salt okunur tutulmalıdır.',
+    shortTitle: 'Evrak köprüsü',
+    kicker: 'Third-party dropbox',
+    summary: 'Öğretmen veya doktor süreli linkle belge bırakır.',
+    usageTip:
+        'Üçüncü kişi uygulamaya üye olmadan süreli ve tek yönlü linkle belge yükler. Yüklenen belge iki ebeveyn için şeffaf kayıt olur.',
+    steps: [
+      'Kişi, kategori ve link süresini gir.',
+      'Linki öğretmen, doktor veya danışmana gönder.',
+      'Belge gelince kaydı Tamamlandı yap.',
+    ],
     icon: Icons.forward_to_inbox_outlined,
     tone: AppColors.sageSoft,
     badge: 'Link',
     pillTone: PillTone.sage,
-    chips: ['48 saat', 'Belge', '3. kişi'],
-    action: _VisionaryAction.dropBox,
-    actionLabel: 'Dropbox kişisi ekle',
-    actionIcon: Icons.contact_mail_outlined,
+    primaryActionLabel: 'Evrak linki hazırla',
+    defaultTitle: 'Öğretmen için 48 saatlik link',
+    defaultDetail: 'Kategori: Okul evrakı. Yükleme tek yönlü ve süreli.',
+    emptyText: 'Henüz evrak köprüsü linki yok.',
+    statuses: {
+      'draft': 'Taslak',
+      'link_ready': 'Link hazır',
+      'uploaded': 'Belge geldi',
+      'completed': 'Tamamlandı',
+    },
+    defaultStatus: 'draft',
+    doneStatus: 'completed',
+    services: [
+      VisionExternalService(
+        title: 'Supabase Storage + Edge Function',
+        detail:
+            'Süreli upload token üreten function ve özel storage bucket gerekir. Link herkese açık kalıcı URL olmayacak.',
+        icon: Icons.cloud_upload_outlined,
+        env: ['DOCUMENTS_BUCKET', 'SUPABASE_SERVICE_ROLE_KEY'],
+      ),
+    ],
+    surface: 'home',
+    titleFieldLabel: 'Link başlığı',
+    detailFieldLabel: 'Kişi, süre, kategori ve paylaşım notu',
   ),
-  _VisionaryFeature(
+  VisionFeatureSpec(
+    key: 'calls',
     title: 'Uygulama içi arama',
+    shortTitle: 'Arama',
     kicker: 'VoIP metadata',
-    summary: 'Telefon numarası gizli, sadece arama metası kayıtlı.',
-    concept:
-        'Agora veya Twilio token ile uygulama içi arama yapılır; numaralar paylaşılmaz.',
-    interface:
-        'Mesaj ekranında arama butonu, gelen arama kartı ve arama geçmişi listesi bulunur.',
-    guardrail:
-        'Ses veya görüntü kaydedilmez; yalnızca saat, süre ve cevap durumu raporlanır.',
+    summary: 'Telefon numarası gizli kalır, sadece arama metası kayıtlanır.',
+    usageTip:
+        'Ses veya görüntü kaydı tutulmaz. Canlıda Agora ya da Twilio token üretimi gerekir; uygulama yalnızca saat, süre ve cevap durumunu saklar.',
+    steps: [
+      'VoIP sağlayıcısı hesabı ve uygulama anahtarlarını oluştur.',
+      'Arama tokenını edge function üzerinden üret.',
+      'Arama bitince sadece meta kaydı ekle.',
+    ],
     icon: Icons.call_outlined,
     tone: AppColors.ochreSoft,
-    badge: 'Token',
+    badge: 'API',
     pillTone: PillTone.ochre,
-    chips: ['VoIP', 'Metadata', 'Gizlilik'],
-    action: _VisionaryAction.callLog,
-    actionLabel: 'Arama meta kaydı aç',
-    actionIcon: Icons.call_outlined,
+    primaryActionLabel: 'Arama kaydı aç',
+    defaultTitle: 'Uygulama içi arama denemesi',
+    defaultDetail: 'Ses kaydı yok. Meta: başladı, süre, cevaplandı/cevapsız.',
+    emptyText: 'Henüz arama meta kaydı yok.',
+    statuses: {
+      'draft': 'Taslak',
+      'token_needed': 'Token gerekli',
+      'completed': 'Tamamlandı',
+    },
+    defaultStatus: 'token_needed',
+    doneStatus: 'completed',
+    services: [
+      VisionExternalService(
+        title: 'Agora veya Twilio',
+        detail:
+            'Canlı arama için RTC app, token üretimi ve mağaza gizlilik açıklaması gerekir.',
+        icon: Icons.vpn_key_outlined,
+        env: ['RTC_PROVIDER', 'AGORA_APP_ID', 'TWILIO_ACCOUNT_SID'],
+      ),
+    ],
+    surface: 'sidebar',
+    titleFieldLabel: 'Arama başlığı',
+    detailFieldLabel: 'Arama amacı, durum ve meta notu',
   ),
-  _VisionaryFeature(
+  VisionFeatureSpec(
+    key: 'holiday-memory',
     title: 'Sıra kimde hafızası',
+    shortTitle: 'Sıra hafızası',
     kicker: 'Holiday tracker',
-    summary: 'Geçmiş bayram/yılbaşı teslimlerini özetler.',
-    concept:
-        'Etiketli geçmiş takvim kayıtlarından son üç yılın sıra hafızası çıkarılır.',
-    interface:
-        'Takvimde Hafıza butonu, yıl kırılımı ve tavsiye diliyle sonuç kartı gösterilir.',
-    guardrail:
-        'Hukuki emir dili kullanılmaz; sadece geçmiş veriye dayalı öngörü sunulur.',
+    summary: 'Geçmiş bayram ve yılbaşı teslimlerini sakin dille özetler.',
+    usageTip:
+        'Bu özellik hukuki emir üretmez; sadece geçmiş takvim kayıtlarına bakarak sıra hafızası çıkarır ve öneri dilini yumuşak tutar.',
+    steps: [
+      'Bayram, yılbaşı veya özel gün etiketini seç.',
+      'Geçmiş yılları not olarak özetle.',
+      'Öneriyi takvim veya rapor ekranında kullan.',
+    ],
     icon: Icons.history_edu_outlined,
     tone: AppColors.paperWhite,
-    badge: 'Analiz',
+    badge: 'Takvim',
     pillTone: PillTone.mute,
-    chips: ['Takvim', 'Geçmiş', 'Tavsiye dili'],
-    action: _VisionaryAction.holidayMemory,
-    actionLabel: 'Hafıza raporu üret',
-    actionIcon: Icons.history_outlined,
+    primaryActionLabel: 'Hafıza kaydı üret',
+    defaultTitle: 'Ramazan Bayramı sıra hafızası',
+    defaultDetail: 'Son üç yılın teslim özeti ve bu yıl için nötr öneri.',
+    emptyText: 'Henüz sıra hafızası kaydı yok.',
+    statuses: _simpleStatuses,
+    defaultStatus: 'draft',
+    doneStatus: 'completed',
+    services: [],
+    surface: 'sidebar',
+    titleFieldLabel: 'Özel gün',
+    detailFieldLabel: 'Geçmiş yıllar ve öneri notu',
   ),
 ];

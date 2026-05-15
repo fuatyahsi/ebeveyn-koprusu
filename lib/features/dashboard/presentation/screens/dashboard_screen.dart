@@ -24,7 +24,7 @@ class DashboardScreen extends ConsumerWidget {
               icon: Icons.add,
               bg: AppColors.sageSoft,
               fg: AppColors.sage,
-              onTap: () => context.push('/documents'),
+              onTap: () => context.push('/visionary/dropbox'),
             ),
           ),
           Padding(
@@ -391,38 +391,38 @@ class _QuickActions extends StatelessWidget {
   static const _actions = <(_QA,)>[
     (
       _QA(
-        'Hızlı teslim',
-        Icons.handshake_outlined,
+        'Gün takası',
+        Icons.swap_horiz_rounded,
         AppColors.sage,
         AppColors.sageSoft,
-        '/handover',
+        '/visionary/swap',
       ),
     ),
     (
       _QA(
-        'Acil bildirim',
-        Icons.priority_high,
-        AppColors.terra,
-        Color(0x1FB65F46),
-        '/emergency',
+        'Beden kartı',
+        Icons.child_friendly_outlined,
+        AppColors.sage,
+        AppColors.paperWhite,
+        '/visionary/wardrobe',
       ),
     ),
     (
       _QA(
-        'Masraf ekle',
-        Icons.receipt_long_outlined,
+        'Banka taslağı',
+        Icons.account_balance_outlined,
         AppColors.ochre,
         AppColors.ochreSoft,
-        '/expenses',
+        '/visionary/banking',
       ),
     ),
     (
       _QA(
-        'Rapor üret',
-        Icons.picture_as_pdf_outlined,
+        'Evrak köprüsü',
+        Icons.forward_to_inbox_outlined,
         AppColors.ink,
         AppColors.paperWhite,
-        '/reports',
+        '/visionary/dropbox',
       ),
     ),
   ];

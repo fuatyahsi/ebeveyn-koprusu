@@ -108,6 +108,26 @@ class LiveRecord {
   final Map<String, dynamic>? extra;
 }
 
+class VisionFeatureRecord {
+  const VisionFeatureRecord({
+    required this.id,
+    required this.featureKey,
+    required this.title,
+    required this.detail,
+    required this.status,
+    required this.createdAt,
+    required this.payload,
+  });
+
+  final String id;
+  final String featureKey;
+  final String title;
+  final String detail;
+  final String status;
+  final DateTime createdAt;
+  final Map<String, dynamic> payload;
+}
+
 class MessageItem {
   const MessageItem({
     required this.id,
@@ -788,6 +808,61 @@ class AppDataService {
         .eq('id', id);
   }
 
+  static Future<List<VisionFeatureRecord>> fetchVisionFeatureRecords(
+    String featureKey,
+  ) async {
+    final workspace = await requireWorkspace();
+    final rows = await _client
+        .from('vision_feature_records')
+        .select('id,feature_key,title,detail,status,payload,created_at')
+        .eq('family_id', workspace.familyId)
+        .eq('feature_key', featureKey)
+        .order('created_at', ascending: false);
+
+    return [
+      for (final row in rows as List<dynamic>)
+        _visionFeatureRecordFromRow(row as Map<String, dynamic>),
+    ];
+  }
+
+  static Future<VisionFeatureRecord> createVisionFeatureRecord({
+    required String featureKey,
+    required String title,
+    required String detail,
+    required String status,
+    Map<String, dynamic> payload = const {},
+  }) async {
+    final workspace = await requireWorkspace();
+    final cleanTitle = title.trim();
+    if (cleanTitle.isEmpty) throw const AppException('Başlık zorunlu.');
+    final row = await _client
+        .from('vision_feature_records')
+        .insert({
+          'family_id': workspace.familyId,
+          'child_id': workspace.childId,
+          'feature_key': featureKey,
+          'title': cleanTitle,
+          'detail': detail.trim().isEmpty ? null : detail.trim(),
+          'status': status,
+          'payload': payload,
+          'created_by': workspace.userId,
+        })
+        .select('id,feature_key,title,detail,status,payload,created_at')
+        .single();
+
+    return _visionFeatureRecordFromRow(row);
+  }
+
+  static Future<void> updateVisionFeatureRecordStatus({
+    required String id,
+    required String status,
+  }) async {
+    await _client
+        .from('vision_feature_records')
+        .update({'status': status})
+        .eq('id', id);
+  }
+
   static Future<MessageWorkspace> fetchMessageWorkspace() async {
     final workspace = await requireWorkspace();
     final thread = await _ensureDefaultThread(workspace);
@@ -1295,6 +1370,23 @@ class AppDataService {
           ? DateTime.now()
           : DateTime.parse(createdValue as String).toLocal(),
       extra: row,
+    );
+  }
+
+  static VisionFeatureRecord _visionFeatureRecordFromRow(
+    Map<String, dynamic> row,
+  ) {
+    final payload = row['payload'];
+    return VisionFeatureRecord(
+      id: row['id'] as String,
+      featureKey: row['feature_key']?.toString() ?? '',
+      title: row['title']?.toString().trim().isNotEmpty == true
+          ? row['title'].toString()
+          : 'Kayıt',
+      detail: row['detail']?.toString() ?? '',
+      status: row['status']?.toString() ?? 'draft',
+      createdAt: DateTime.parse(row['created_at'] as String).toLocal(),
+      payload: payload is Map<String, dynamic> ? payload : <String, dynamic>{},
     );
   }
 

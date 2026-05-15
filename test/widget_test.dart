@@ -26,6 +26,6 @@ void main() {
 
     expect(find.text('Deniz, 8 yaş'), findsOneWidget);
     expect(find.text('SIRADAKİ TESLİM'), findsOneWidget);
-    expect(find.text('Hızlı teslim'), findsOneWidget);
+    expect(find.text('Gün takası'), findsOneWidget);
   });
 }

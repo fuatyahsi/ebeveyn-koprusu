@@ -48,12 +48,13 @@ supabase db reset
 - `0007_storage_buckets.sql`: private bucket ve Storage policy tanımları
 - `0008_triggers_audit.sql`: updated_at, mesaj mutasyon engeli, audit hash-chain
 - `0009_seed_subscription_plans.sql`: Plus, Premium, Professional plan katalog verisi
+- `0013_vision_feature_records.sql`: vizyon özellikleri için canlı kayıt tablosu
 
 ## Edge Functions
 
 `supabase/functions` altında şu fonksiyon iskeletleri vardır:
 
-`send-notification`, `schedule-reminders`, `generate-report-pdf`, `verify-report`, `revenuecat-webhook`, `generate-audit-hash`, `tone-assistant`, `ocr-expense-receipt`, `invite-family-member`, `external-response`, `expire-pending-requests`.
+`send-notification`, `schedule-reminders`, `generate-report-pdf`, `verify-report`, `revenuecat-webhook`, `generate-audit-hash`, `tone-assistant`, `ocr-expense-receipt`, `invite-family-member`, `external-response`, `expire-pending-requests`, `open-banking-session`, `open-banking-callback`, `create-call-token`, `external-dropbox-link`.
 
 Deploy örneği:
 

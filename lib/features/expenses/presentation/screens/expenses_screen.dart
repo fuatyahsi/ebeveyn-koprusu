@@ -346,49 +346,56 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
+    return Material(
+      color: active ? AppColors.ink : AppColors.paperWhite,
       borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: active ? AppColors.ink : AppColors.paperWhite,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: active ? Colors.transparent : AppColors.line,
-          ),
-        ),
-        child: Row(
-          children: [
-            Text(
-              label,
-              style: AppTypography.ui(
-                size: 11.5,
-                weight: FontWeight.w500,
-                color: active ? AppColors.paper : AppColors.inkSoft,
-              ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: active ? AppColors.ink : AppColors.paperWhite,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: active ? Colors.transparent : AppColors.line,
             ),
-            if (count > 0) ...[
-              const SizedBox(width: 5),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(
-                  color: active
-                      ? AppColors.paper.withValues(alpha: 0.18)
-                      : AppColors.ink.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            children: [
+              Text(
+                label,
+                style: AppTypography.ui(
+                  size: 11.5,
+                  weight: FontWeight.w500,
+                  color: active ? AppColors.paper : AppColors.inkSoft,
                 ),
-                child: Text(
-                  '$count',
-                  style: AppTypography.mono(
+              ),
+              if (count > 0) ...[
+                const SizedBox(width: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
                     color: active
-                        ? AppColors.paper.withValues(alpha: 0.7)
-                        : AppColors.inkMute,
+                        ? AppColors.paper.withValues(alpha: 0.18)
+                        : AppColors.ink.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: AppTypography.mono(
+                      color: active
+                          ? AppColors.paper.withValues(alpha: 0.7)
+                          : AppColors.inkMute,
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

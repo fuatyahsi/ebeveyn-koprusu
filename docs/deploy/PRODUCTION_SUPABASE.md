@@ -27,17 +27,9 @@ supabase db push
 npm run supabase:functions:deploy
 ```
 
-Optional secrets for first live smoke test:
-
-```powershell
-supabase secrets set TONE_ASSISTANT_PROVIDER=mock
-```
-
-Later, when using a real LLM provider, set the provider secret only on Supabase:
-
-```powershell
-supabase secrets set TONE_ASSISTANT_PROVIDER=openai OPENAI_API_KEY=...
-```
+Ebeveyn Asistanı vizyon kapsamından kaldırıldı; ilk canlı smoke test için LLM
+API zorunlu değildir. Vizyon özelliklerinin servis listesi için
+`docs/deploy/VISIONARY_EXTERNAL_SERVICES.md` dosyasını kullan.
 
 ## Build A Production-Pointing APK
 
