@@ -1,5 +1,6 @@
 import 'package:ebeveyn_koprusu/core/config/app_config.dart';
 import 'package:ebeveyn_koprusu/core/services/app_data_service.dart';
+import 'package:ebeveyn_koprusu/shared/widgets/module_usage_tip.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,6 +18,12 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          const ModuleUsageTip(
+            icon: Icons.settings_outlined,
+            text:
+                'Ayarlar ekranında ortam bağlantılarını görür, KVKK/veri işlemlerine ulaşırsın. Çıkış yap aksiyonu canlı Supabase oturumunu kapatır.',
+          ),
+          const SizedBox(height: 16),
           SectionCard(
             title: 'Ortam',
             icon: Icons.settings_applications_outlined,

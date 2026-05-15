@@ -5,6 +5,7 @@ import 'package:ebeveyn_koprusu/core/services/app_data_service.dart';
 import 'package:ebeveyn_koprusu/core/utils/formatters.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/app_card.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/app_pill.dart';
+import 'package:ebeveyn_koprusu/shared/widgets/module_usage_tip.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/screen_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -102,6 +103,12 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               children: [
+                const ModuleUsageTip(
+                  icon: Icons.receipt_long_outlined,
+                  text:
+                      'Masraf eklediğinde toplam tutar ve karşı taraftan istenen pay canlı expenses tablosuna yazılır. Filtreler bekleyen, kabul edilen, ödenen ve itirazlı kayıtları ayırır.',
+                ),
+                const SizedBox(height: 12),
                 _SummaryCard(items: _items),
                 const SizedBox(height: 12),
                 _FilterChips(

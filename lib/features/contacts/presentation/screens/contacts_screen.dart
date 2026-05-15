@@ -1,5 +1,4 @@
-import 'package:ebeveyn_koprusu/shared/widgets/module_detail_screen.dart';
-import 'package:ebeveyn_koprusu/shared/widgets/section_card.dart';
+import 'package:ebeveyn_koprusu/shared/widgets/live_module_screen.dart';
 import 'package:flutter/material.dart';
 
 class ContactsScreen extends StatelessWidget {
@@ -7,31 +6,16 @@ class ContactsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ModuleDetailScreen(
+    return const LiveModuleScreen(
       title: 'Yakınlar',
-      route: '/contacts',
-      children: [
-        SectionCard(
-          title: 'Teslim yetkilileri',
-          icon: Icons.contact_phone_outlined,
-          child: Column(
-            children: const [
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.verified_user_outlined),
-                title: Text('Ayşe Demir'),
-                subtitle: Text('Anneanne • sürekli teslim yetkisi'),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.local_hospital_outlined),
-                title: Text('Dr. Kemal Arı'),
-                subtitle: Text('Doktor • acil durumda aranabilir'),
-              ),
-            ],
-          ),
-        ),
-      ],
+      eyebrow: 'Erişim',
+      moduleKey: 'contacts',
+      icon: Icons.contact_phone_outlined,
+      usage:
+          'Teslim alabilecek, acil durumda aranabilecek veya çocuğun bakım çevresinde yer alan kişileri ekle. Kayıtlar aile içinde görünür ve onay akışına hazır şekilde Supabase’e yazılır.',
+      emptyText: 'Henüz yakın kaydı yok. + ile bir kişi ekleyebilirsin.',
+      addTitle: 'Yakın ekle',
+      addDetailLabel: 'Yakınlık, telefon, e-posta veya kısa not',
     );
   }
 }

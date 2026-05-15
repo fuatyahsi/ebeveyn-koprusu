@@ -4,6 +4,7 @@ import 'package:ebeveyn_koprusu/core/models/domain_models.dart';
 import 'package:ebeveyn_koprusu/core/services/app_data_service.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/app_card.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/app_pill.dart';
+import 'package:ebeveyn_koprusu/shared/widgets/module_usage_tip.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/screen_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -113,6 +114,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               children: [
+                const ModuleUsageTip(
+                  icon: Icons.calendar_month_outlined,
+                  text:
+                      'Teslim, görüşme, okul veya özel günleri + ile takvime ekle. Kayıtlar custody_events tablosuna canlı yazılır ve teslim/rapor modülleri aynı veriyi kullanır.',
+                ),
+                const SizedBox(height: 12),
                 const _Legend(),
                 const SizedBox(height: 6),
                 const AppCard(padding: EdgeInsets.all(12), child: _MonthGrid()),

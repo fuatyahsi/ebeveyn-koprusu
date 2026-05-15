@@ -5,12 +5,15 @@ import 'package:ebeveyn_koprusu/app/theme/app_typography.dart';
 import 'package:ebeveyn_koprusu/core/services/app_data_service.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/app_card.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/app_pill.dart';
+import 'package:ebeveyn_koprusu/shared/widgets/module_usage_tip.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/screen_header.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 class DocumentsScreen extends StatefulWidget {
-  const DocumentsScreen({super.key});
+  const DocumentsScreen({super.key, this.showBack = true});
+
+  final bool showBack;
 
   @override
   State<DocumentsScreen> createState() => _DocumentsScreenState();
@@ -106,7 +109,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
           padding: const EdgeInsets.only(bottom: 24),
           children: [
             ScreenHeader(
-              showBack: true,
+              showBack: widget.showBack,
               eyebrow: 'Arsiv',
               title: 'Belgeler',
               trailing: _UploadButton(onTap: _loading ? null : _uploadDocument),
@@ -116,6 +119,12 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 children: [
+                  const ModuleUsageTip(
+                    icon: Icons.folder_outlined,
+                    text:
+                        'PDF, fotoğraf veya dosya seçtiğinde dosya private Supabase storage bucket içine, metadatası da documents tablosuna kaydedilir. Kategoriye göre okul, sağlık, servis, masraf veya hukuki arşiv oluşturabilirsin.',
+                  ),
+                  const SizedBox(height: 14),
                   _StorageCard(count: _documents.length),
                   const SizedBox(height: 14),
                   const SectionLabel(label: 'Son belgeler'),

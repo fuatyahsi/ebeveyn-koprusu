@@ -2,7 +2,9 @@ import 'package:ebeveyn_koprusu/app/theme/app_colors.dart';
 import 'package:ebeveyn_koprusu/app/theme/app_typography.dart';
 import 'package:ebeveyn_koprusu/features/calendar/presentation/screens/calendar_screen.dart';
 import 'package:ebeveyn_koprusu/features/dashboard/presentation/screens/dashboard_screen.dart';
+import 'package:ebeveyn_koprusu/features/documents/presentation/screens/documents_screen.dart';
 import 'package:ebeveyn_koprusu/features/expenses/presentation/screens/expenses_screen.dart';
+import 'package:ebeveyn_koprusu/features/family/presentation/screens/family_screen.dart';
 import 'package:ebeveyn_koprusu/features/messages/presentation/screens/messages_screen.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/brand_mark.dart';
 import 'package:flutter/material.dart';
@@ -21,8 +23,10 @@ class _AppShellState extends State<AppShell> {
   static const _screens = <Widget>[
     DashboardScreen(),
     CalendarScreen(),
+    FamilyScreen(showBack: false),
     MessagesScreen(),
     ExpensesScreen(),
+    DocumentsScreen(showBack: false),
   ];
 
   @override
@@ -48,8 +52,10 @@ class _BottomBar extends StatelessWidget {
   static const _items = <(IconData, IconData, String)>[
     (Icons.cottage_outlined, Icons.cottage, 'Bugün'),
     (Icons.calendar_month_outlined, Icons.calendar_month, 'Takvim'),
+    (Icons.groups_2_outlined, Icons.groups_2, 'Aile'),
     (Icons.forum_outlined, Icons.forum, 'Mesaj'),
     (Icons.receipt_long_outlined, Icons.receipt_long, 'Masraf'),
+    (Icons.folder_outlined, Icons.folder, 'Belge'),
   ];
 
   @override
@@ -62,7 +68,7 @@ class _BottomBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 9),
+          padding: const EdgeInsets.symmetric(vertical: 7),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -101,16 +107,16 @@ class _BarItem extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 20, color: color),
-            const SizedBox(height: 4),
+            Icon(icon, size: 19, color: color),
+            const SizedBox(height: 3),
             Text(
               label,
               style: AppTypography.ui(
-                size: 9.5,
+                size: 9,
                 weight: FontWeight.w500,
                 color: color,
                 letter: 0.2,

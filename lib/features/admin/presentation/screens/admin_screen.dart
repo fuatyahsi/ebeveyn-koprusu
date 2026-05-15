@@ -1,5 +1,4 @@
-import 'package:ebeveyn_koprusu/shared/widgets/module_detail_screen.dart';
-import 'package:ebeveyn_koprusu/shared/widgets/section_card.dart';
+import 'package:ebeveyn_koprusu/shared/widgets/live_module_screen.dart';
 import 'package:flutter/material.dart';
 
 class AdminScreen extends StatelessWidget {
@@ -7,31 +6,17 @@ class AdminScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ModuleDetailScreen(
+    return const LiveModuleScreen(
       title: 'Admin',
-      route: '/admin',
-      children: [
-        SectionCard(
-          title: 'Operasyon panosu',
-          icon: Icons.admin_panel_settings_outlined,
-          child: Column(
-            children: [
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.report_problem_outlined),
-                title: Text('Abuse/risk flag listesi'),
-                subtitle: Text('Hassas aile içeriği maskeli görünür.'),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.verified_outlined),
-                title: Text('Rapor doğrulama kayıtları'),
-                subtitle: Text('Token ve hash sonuçları üzerinden izlenir.'),
-              ),
-            ],
-          ),
-        ),
-      ],
+      eyebrow: 'Operasyon',
+      moduleKey: 'admin',
+      icon: Icons.admin_panel_settings_outlined,
+      usage:
+          'Bu ekran aileye ait audit kayıtlarını maskeli şekilde okur. Destek ve doğrulama için hash zincirinin son aksiyonlarını görür; yeni aile içeriği oluşturmaz.',
+      emptyText: 'Henüz audit kaydı yok.',
+      addTitle: 'Admin kaydı',
+      addDetailLabel: 'Not',
+      readOnly: true,
     );
   }
 }

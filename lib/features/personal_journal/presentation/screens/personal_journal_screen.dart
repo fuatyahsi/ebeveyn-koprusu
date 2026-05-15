@@ -1,5 +1,4 @@
-import 'package:ebeveyn_koprusu/shared/widgets/module_detail_screen.dart';
-import 'package:ebeveyn_koprusu/shared/widgets/section_card.dart';
+import 'package:ebeveyn_koprusu/shared/widgets/live_module_screen.dart';
 import 'package:flutter/material.dart';
 
 class PersonalJournalScreen extends StatelessWidget {
@@ -7,18 +6,20 @@ class PersonalJournalScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ModuleDetailScreen(
+    return const LiveModuleScreen(
       title: 'Kişisel Defter',
-      route: '/journal',
-      children: [
-        SectionCard(
-          title: 'Gizli kayıt alanı',
-          icon: Icons.note_alt_outlined,
-          child: Text(
-            'Bu bölümdeki kayıtlar varsayılan olarak yalnızca oluşturan kullanıcı tarafından görüntülenir. Rapora dahil etme açık kullanıcı işlemiyle yapılır.',
-          ),
-        ),
-      ],
+      eyebrow: 'Gizli alan',
+      moduleKey: 'journal',
+      icon: Icons.note_alt_outlined,
+      usage:
+          'Bu alan yalnızca senin kayıtlarını gösterir. Günlük not, olay yorumu veya hatırlatmayı yaz; gerektiğinde “rapora al” diyerek rapor kapsamına dahil edebilirsin.',
+      emptyText: 'Defter boş. + ile kişisel bir not ekle.',
+      addTitle: 'Defter notu',
+      addDetailLabel: 'Not içeriği',
+      primaryStatus: 'raporda',
+      primaryStatusLabel: 'Rapora al',
+      secondaryStatus: 'gizli',
+      secondaryStatusLabel: 'Gizli tut',
     );
   }
 }
