@@ -25,7 +25,7 @@ class _AppShellState extends State<AppShell> {
     CalendarScreen(),
     FamilyScreen(showBack: false),
     MessagesScreen(),
-    ExpensesScreen(),
+    ExpensesScreen(showBack: false),
     DocumentsScreen(showBack: false),
   ];
 

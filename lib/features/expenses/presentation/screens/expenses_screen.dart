@@ -11,7 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ExpensesScreen extends ConsumerStatefulWidget {
-  const ExpensesScreen({super.key});
+  const ExpensesScreen({super.key, this.showBack = true});
+
+  final bool showBack;
 
   @override
   ConsumerState<ExpensesScreen> createState() => _ExpensesScreenState();
@@ -88,40 +90,44 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   Widget build(BuildContext context) {
     final filtered = _filteredItems;
 
-    return SafeArea(
-      bottom: false,
-      child: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
-        children: [
-          ScreenHeader(
-            eyebrow: 'Mayis · Bu ay',
-            title: 'Masraflar',
-            trailing: _HeaderAddButton(onTap: _loading ? null : _addExpense),
-          ),
-          if (_loading) const LinearProgressIndicator(minHeight: 2),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              children: [
-                const ModuleUsageTip(
-                  icon: Icons.receipt_long_outlined,
-                  text:
-                      'Masraf eklediğinde toplam tutar ve karşı taraftan istenen pay canlı expenses tablosuna yazılır. Filtreler bekleyen, kabul edilen, ödenen ve itirazlı kayıtları ayırır.',
-                ),
-                const SizedBox(height: 12),
-                _SummaryCard(items: _items),
-                const SizedBox(height: 12),
-                _FilterChips(
-                  selected: _filter,
-                  items: _items,
-                  onChanged: (i) => setState(() => _filter = i),
-                ),
-                const SizedBox(height: 14),
-                _ExpenseList(items: filtered),
-              ],
+    return Scaffold(
+      backgroundColor: AppColors.paper,
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 24),
+          children: [
+            ScreenHeader(
+              eyebrow: 'Mayis · Bu ay',
+              title: 'Masraflar',
+              showBack: widget.showBack,
+              trailing: _HeaderAddButton(onTap: _loading ? null : _addExpense),
             ),
-          ),
-        ],
+            if (_loading) const LinearProgressIndicator(minHeight: 2),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  const ModuleUsageTip(
+                    icon: Icons.receipt_long_outlined,
+                    text:
+                        'Masraf eklediğinde toplam tutar ve karşı taraftan istenen pay canlı expenses tablosuna yazılır. Filtreler bekleyen, kabul edilen, ödenen ve itirazlı kayıtları ayırır.',
+                  ),
+                  const SizedBox(height: 12),
+                  _SummaryCard(items: _items),
+                  const SizedBox(height: 12),
+                  _FilterChips(
+                    selected: _filter,
+                    items: _items,
+                    onChanged: (i) => setState(() => _filter = i),
+                  ),
+                  const SizedBox(height: 14),
+                  _ExpenseList(items: filtered),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
