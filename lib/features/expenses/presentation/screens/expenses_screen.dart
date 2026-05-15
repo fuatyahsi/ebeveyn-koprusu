@@ -598,6 +598,12 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
               controller: _descriptionController,
               decoration: const InputDecoration(labelText: 'Not'),
             ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _prefillBankDraft,
+              icon: const Icon(Icons.account_balance_outlined),
+              label: const Text('Bankadan çek'),
+            ),
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: _save,
@@ -624,6 +630,21 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
 
   double _parseAmount(String input) {
     return double.tryParse(input.trim().replaceAll(',', '.')) ?? 0;
+  }
+
+  void _prefillBankDraft() {
+    setState(() {
+      _titleController.text = 'Banka işlem taslağı';
+      _category = 'Okul';
+      _descriptionController.text =
+          'OAuth sağlayıcısı bağlanınca seçilen tekil işlem buraya gelecek.';
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Banka OAuth arayüz taslağı hazırlandı.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 }
 

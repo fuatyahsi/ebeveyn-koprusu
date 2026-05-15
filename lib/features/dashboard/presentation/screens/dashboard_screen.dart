@@ -34,6 +34,8 @@ class DashboardScreen extends ConsumerWidget {
                 const _ChildHero(),
                 const SizedBox(height: 12),
                 _NextHandoverCard(onDetail: () => context.push('/handover')),
+                const SizedBox(height: 12),
+                const _HarmonyScoreCard(),
                 const SizedBox(height: 16),
                 const SectionLabel(label: 'Bugün için'),
                 const _QuickActions(),
@@ -43,6 +45,55 @@ class DashboardScreen extends ConsumerWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HarmonyScoreCard extends StatelessWidget {
+  const _HarmonyScoreCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      tint: CardTint.sage,
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.paperWhite,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: const Icon(Icons.favorite_border, color: AppColors.sage),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Aile uyum skoru',
+                  style: AppTypography.ui(size: 13, weight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Bu ay akışlar sakin ilerliyor. Skor kişisel değil, aile toplam göstergesidir.',
+                  style: AppTypography.ui(
+                    size: 11.5,
+                    color: AppColors.inkMute,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text('86', style: AppTypography.display(size: 28, height: 1)),
         ],
       ),
     );

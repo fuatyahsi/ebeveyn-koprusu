@@ -8,6 +8,7 @@ import 'package:ebeveyn_koprusu/shared/widgets/module_usage_tip.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/screen_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 class CalendarScreen extends ConsumerStatefulWidget {
@@ -102,6 +103,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               children: [
                 _AddButton(onTap: _loading ? null : _addEvent),
                 const SizedBox(width: 8),
+                _MemoryButton(onTap: () => context.push('/visionary')),
+                const SizedBox(width: 8),
                 _ViewSwitcher(
                   index: _view,
                   onChanged: (v) => setState(() => _view = v),
@@ -153,6 +156,35 @@ class _AddButton extends StatelessWidget {
           child: const SizedBox.square(
             dimension: 36,
             child: Icon(Icons.add, size: 18, color: AppColors.paper),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MemoryButton extends StatelessWidget {
+  const _MemoryButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Sıra hafızası',
+      child: Material(
+        color: AppColors.paperWhite,
+        shape: CircleBorder(side: BorderSide(color: AppColors.line)),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: const SizedBox.square(
+            dimension: 36,
+            child: Icon(
+              Icons.history_edu_outlined,
+              size: 18,
+              color: AppColors.ink,
+            ),
           ),
         ),
       ),

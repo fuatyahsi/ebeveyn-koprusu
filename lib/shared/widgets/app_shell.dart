@@ -36,6 +36,11 @@ class _AppShellState extends State<AppShell> {
       drawer: const _ModuleSidebar(),
       drawerEnableOpenDragGesture: true,
       body: IndexedStack(index: _index, children: _screens),
+      floatingActionButton: FloatingActionButton.small(
+        tooltip: 'Danışman',
+        onPressed: () => context.push('/visionary'),
+        child: const Icon(Icons.psychology_alt_outlined),
+      ),
       bottomNavigationBar: _BottomBar(
         active: _index,
         onTap: (i) => setState(() => _index = i),
@@ -144,6 +149,7 @@ class _ModuleSidebar extends StatelessWidget {
     (Icons.emergency_outlined, 'Acil', '/emergency'),
     (Icons.checklist_outlined, 'Checklist', '/checklists'),
     (Icons.picture_as_pdf_outlined, 'Raporlar', '/reports'),
+    (Icons.auto_awesome_outlined, 'Vizyon', '/visionary'),
     (Icons.workspace_premium_outlined, 'Premium', '/subscriptions'),
     (Icons.settings_outlined, 'Ayarlar', '/settings'),
   ];

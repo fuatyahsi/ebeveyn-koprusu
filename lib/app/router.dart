@@ -16,6 +16,7 @@ import 'package:ebeveyn_koprusu/features/personal_journal/presentation/screens/p
 import 'package:ebeveyn_koprusu/features/reports/presentation/screens/reports_screen.dart';
 import 'package:ebeveyn_koprusu/features/settings/presentation/screens/settings_screen.dart';
 import 'package:ebeveyn_koprusu/features/subscriptions/presentation/screens/subscriptions_screen.dart';
+import 'package:ebeveyn_koprusu/features/visionary/presentation/screens/visionary_features_screen.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/app_shell.dart';
 import 'package:ebeveyn_koprusu/core/services/supabase_service.dart';
 import 'package:go_router/go_router.dart';
@@ -101,6 +102,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/subscriptions',
       builder: (context, state) => const SubscriptionsScreen(),
+    ),
+    GoRoute(
+      path: '/visionary',
+      builder: (context, state) => const VisionaryFeaturesScreen(),
     ),
     GoRoute(
       path: '/settings',
