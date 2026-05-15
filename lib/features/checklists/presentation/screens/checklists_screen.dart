@@ -38,36 +38,25 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
   }
 
   Future<void> _add() async {
-    final controller = TextEditingController();
-    final title = await showDialog<String>(
+    final title = await showModalBottomSheet<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Checklist maddesi'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Madde adı'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Vazgeç'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('Ekle'),
-          ),
-        ],
-      ),
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => const _ChecklistItemSheet(),
     );
-    controller.dispose();
-    if (title == null || title.trim().isEmpty) return;
+    if (!mounted || title == null || title.trim().isEmpty) return;
 
     setState(() => _loading = true);
     try {
       final item = await AppDataService.addChecklistItem(title);
       if (!mounted) return;
       setState(() => _items = [..._items, item]);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Checklist maddesi eklendi.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } catch (error) {
       _showError(error);
     } finally {
@@ -169,5 +158,65 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
         ),
       ),
     );
+  }
+}
+
+class _ChecklistItemSheet extends StatefulWidget {
+  const _ChecklistItemSheet();
+
+  @override
+  State<_ChecklistItemSheet> createState() => _ChecklistItemSheetState();
+}
+
+class _ChecklistItemSheetState extends State<_ChecklistItemSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18, 18, 18, bottom + 18),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Checklist maddesi', style: AppTypography.display(size: 30)),
+            const SizedBox(height: 14),
+            TextFormField(
+              controller: _controller,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Madde adı'),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Madde adı zorunlu.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _save,
+              icon: const Icon(Icons.add),
+              label: const Text('Ekle'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _save() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    FocusScope.of(context).unfocus();
+    Navigator.of(context).pop(_controller.text.trim());
   }
 }

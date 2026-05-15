@@ -93,31 +93,13 @@ class _FamilyScreenState extends State<FamilyScreen> {
   }
 
   Future<void> _acceptInvite() async {
-    final controller = TextEditingController();
-    final code = await showDialog<String>(
+    final code = await showModalBottomSheet<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Davet kodu ile katıl'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.characters,
-          decoration: const InputDecoration(labelText: '8 haneli kod'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Vazgeç'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('Onayla'),
-          ),
-        ],
-      ),
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => const _InviteCodeSheet(),
     );
-    controller.dispose();
-    if (code == null || code.trim().isEmpty) return;
+    if (!mounted || code == null || code.trim().isEmpty) return;
 
     setState(() => _loading = true);
     try {
@@ -486,6 +468,70 @@ class _InviteSheetState extends State<_InviteSheet> {
         ],
       ),
     );
+  }
+}
+
+class _InviteCodeSheet extends StatefulWidget {
+  const _InviteCodeSheet();
+
+  @override
+  State<_InviteCodeSheet> createState() => _InviteCodeSheetState();
+}
+
+class _InviteCodeSheetState extends State<_InviteCodeSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18, 18, 18, bottom + 18),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Davet kodu ile katıl',
+              style: AppTypography.display(size: 30),
+            ),
+            const SizedBox(height: 14),
+            TextFormField(
+              controller: _controller,
+              autofocus: true,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(labelText: '8 haneli kod'),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Davet kodu zorunlu.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _save,
+              icon: const Icon(Icons.verified_user_outlined),
+              label: const Text('Onayla'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _save() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    FocusScope.of(context).unfocus();
+    Navigator.of(context).pop(_controller.text.trim().toUpperCase());
   }
 }
 
