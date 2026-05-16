@@ -1,10 +1,12 @@
 import 'package:ebeveyn_koprusu/app/theme/app_colors.dart';
 import 'package:ebeveyn_koprusu/app/theme/app_typography.dart';
 import 'package:ebeveyn_koprusu/core/services/app_data_service.dart';
+import 'package:ebeveyn_koprusu/core/services/local_notification_service.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/app_card.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/app_pill.dart';
 import 'package:ebeveyn_koprusu/shared/widgets/screen_header.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -100,7 +102,7 @@ class _VisionFeatureScreenState extends State<VisionFeatureScreen> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (context) => _AddVisionRecordSheet(feature: _feature),
+      builder: (context) => _addSheetForFeature(_feature),
     );
     if (draft == null) return;
 
@@ -115,8 +117,23 @@ class _VisionFeatureScreenState extends State<VisionFeatureScreen> {
           'feature_title': _feature.title,
           'surface': _feature.surface,
           'created_from': 'vision_feature_screen',
+          ...draft.payload,
         },
       );
+      if (draft.calendarStartAt != null && draft.calendarEndAt != null) {
+        await AppDataService.addCustodyEvent(
+          title: draft.calendarTitle ?? draft.title,
+          startAt: draft.calendarStartAt!,
+          endAt: draft.calendarEndAt!,
+          location: draft.calendarLocation ?? '',
+        );
+      }
+      if (draft.notificationTitle != null && draft.notificationBody != null) {
+        await LocalNotificationService.showReminderCreated(
+          title: draft.notificationTitle!,
+          body: draft.notificationBody!,
+        );
+      }
       if (!mounted) return;
       setState(() => _records = [record, ..._records]);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -130,6 +147,18 @@ class _VisionFeatureScreenState extends State<VisionFeatureScreen> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Widget _addSheetForFeature(VisionFeatureSpec feature) {
+    return switch (feature.key) {
+      'swap' => _AddSwapSheet(feature: feature),
+      'geofence' => _AddGeofenceSheet(feature: feature),
+      'wardrobe' => _AddWardrobeSheet(feature: feature),
+      'teen' => _AddTeenSheet(feature: feature),
+      'dropbox' => _AddDropboxSheet(feature: feature),
+      'printouts' => _AddPrintoutSheet(feature: feature),
+      _ => _AddVisionRecordSheet(feature: feature),
+    };
   }
 
   Future<void> _setStatus(VisionFeatureRecord record, String status) async {
@@ -184,6 +213,7 @@ class _VisionFeatureScreenState extends State<VisionFeatureScreen> {
                   _FeatureHero(feature: _feature),
                   const SizedBox(height: 12),
                   _HowToUseCard(feature: _feature),
+                  _FeatureExtraPanel(feature: _feature, records: _records),
                   const SizedBox(height: 14),
                   SectionLabel(
                     label: 'Canlı kayıtlar',
@@ -481,6 +511,322 @@ class _HowToUseCard extends StatelessWidget {
   }
 }
 
+class _FeatureExtraPanel extends StatelessWidget {
+  const _FeatureExtraPanel({required this.feature, required this.records});
+
+  final VisionFeatureSpec feature;
+  final List<VisionFeatureRecord> records;
+
+  @override
+  Widget build(BuildContext context) {
+    final latest = records.isEmpty ? null : records.first;
+    return switch (feature.key) {
+      'wardrobe' => Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: _WardrobeCurrentCard(record: latest),
+      ),
+      'printouts' => const Padding(
+        padding: EdgeInsets.only(top: 12),
+        child: _ChildCalendarPreview(),
+      ),
+      'dropbox' => Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: _DropboxHelperCard(record: latest),
+      ),
+      _ => const SizedBox.shrink(),
+    };
+  }
+}
+
+class _WardrobeCurrentCard extends StatelessWidget {
+  const _WardrobeCurrentCard({required this.record});
+
+  final VisionFeatureRecord? record;
+
+  @override
+  Widget build(BuildContext context) {
+    final payload = record?.payload ?? const <String, dynamic>{};
+    String value(String key, String fallback) {
+      final raw = payload[key]?.toString().trim();
+      return raw == null || raw.isEmpty ? fallback : raw;
+    }
+
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.straighten_outlined, color: AppColors.sage),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Güncel beden kartı',
+                  style: AppTypography.ui(size: 13.5, weight: FontWeight.w700),
+                ),
+              ),
+              if (record != null)
+                AppPill(
+                  label: DateFormat(
+                    'dd MMM',
+                    'tr_TR',
+                  ).format(record!.createdAt),
+                  tone: PillTone.mute,
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _InfoChip(label: 'Boy', value: value('height', '-')),
+              _InfoChip(label: 'Ayakkabı', value: value('shoe', '-')),
+              _InfoChip(label: 'Üst', value: value('top_size', '-')),
+              _InfoChip(label: 'Alt', value: value('bottom_size', '-')),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value(
+              'need',
+              'Henüz ihtiyaç notu yok. + ile güncel beden ve ihtiyaç ekle.',
+            ),
+            style: AppTypography.ui(size: 12.5, color: AppColors.inkSoft),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 110,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.paperWhite,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: AppTypography.mono(size: 9.5, letter: 1)),
+          const SizedBox(height: 4),
+          Text(value, style: AppTypography.ui(weight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChildCalendarPreview extends StatelessWidget {
+  const _ChildCalendarPreview();
+
+  @override
+  Widget build(BuildContext context) {
+    const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.preview_outlined, color: AppColors.ochre),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Çocuk takvimi ön gösterimi',
+                  style: AppTypography.ui(size: 13.5, weight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (var i = 0; i < days.length; i++) ...[
+                Expanded(
+                  child: Container(
+                    height: 54,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: i >= 5 ? AppColors.ochreSoft : AppColors.sageSoft,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          i == 4
+                              ? Icons.backpack_outlined
+                              : Icons.home_outlined,
+                          size: 16,
+                          color: AppColors.ink,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(days[i], style: AppTypography.ui(size: 10)),
+                      ],
+                    ),
+                  ),
+                ),
+                if (i < days.length - 1) const SizedBox(width: 5),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DropboxHelperCard extends StatelessWidget {
+  const _DropboxHelperCard({required this.record});
+
+  final VisionFeatureRecord? record;
+
+  @override
+  Widget build(BuildContext context) {
+    final link = record?.payload['upload_url']?.toString();
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.link_outlined, color: AppColors.sage),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Link nerede?',
+                  style: AppTypography.ui(size: 13.5, weight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Ekle’ye basınca kişi, kanal ve süre seçilir. Uygulama süreli bir yükleme linki oluşturur; link kayıt kartında görünür. Belge gelince durum “Belge geldi”, kontrol edilince “Tamamlandı” yapılır.',
+            style: AppTypography.ui(size: 12.5, color: AppColors.inkSoft),
+          ),
+          if (link != null && link.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _UploadLinkActions(link: link),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _UploadLinkActions extends StatelessWidget {
+  const _UploadLinkActions({required this.link});
+
+  final String link;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SelectableText(
+          link,
+          style: AppTypography.mono(
+            size: 10.5,
+            letter: 0,
+            color: AppColors.inkSoft,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            OutlinedButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: link));
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Link kopyalandi.'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.copy_rounded, size: 16),
+              label: const Text('Kopyala'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _showUploadLinkPreview(context, link),
+              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+              label: const Text('Linki dene'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+void _showUploadLinkPreview(BuildContext context, String link) {
+  final isHttps = link.startsWith('http://') || link.startsWith('https://');
+  showModalBottomSheet<void>(
+    context: context,
+    useSafeArea: true,
+    builder: (context) => Padding(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.forward_to_inbox_outlined),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Belge yukleme baglantisi',
+                  style: AppTypography.ui(size: 17, weight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SelectableText(link, style: AppTypography.mono(size: 11, letter: 0)),
+          const SizedBox(height: 12),
+          Text(
+            isHttps
+                ? 'Bu HTTPS linki dis kullanicinin belge yukleme sayfasina gider. Link suresi dolunca kabul edilmez.'
+                : 'Bu cihaz ici deneme linkidir. Edge Function PUBLIC_APP_URL ile yayina alindiginda burada HTTPS yukleme sayfasi gorunur.',
+            style: AppTypography.ui(
+              size: 13,
+              height: 1.35,
+              color: AppColors.inkSoft,
+            ),
+          ),
+          const SizedBox(height: 14),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.check_rounded),
+            label: const Text('Tamam'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 class _StepRow extends StatelessWidget {
   const _StepRow({required this.index, required this.text});
 
@@ -584,6 +930,8 @@ class _RecordCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final formatter = DateFormat('dd MMM HH:mm', 'tr');
     final isDone = record.status == feature.doneStatus;
+    final uploadUrl = record.payload['upload_url']?.toString();
+    final calendarSynced = record.payload['calendar_synced'] == true;
     return AppCard(
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -627,6 +975,33 @@ class _RecordCard extends StatelessWidget {
                 size: 12.5,
                 color: AppColors.inkSoft,
                 height: 1.32,
+              ),
+            ),
+          ],
+          if (calendarSynced) ...[
+            const SizedBox(height: 8),
+            const AppPill(label: 'Takvime işlendi', tone: PillTone.sage),
+          ],
+          if (uploadUrl != null && uploadUrl.trim().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.sageSoft,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.line),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Paylaşılacak link',
+                    style: AppTypography.ui(size: 12, weight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 4),
+                  _UploadLinkActions(link: uploadUrl),
+                ],
               ),
             ),
           ],
@@ -795,6 +1170,739 @@ class _HeaderAddButton extends StatelessWidget {
   }
 }
 
+class _AddSwapSheet extends StatefulWidget {
+  const _AddSwapSheet({required this.feature});
+
+  final VisionFeatureSpec feature;
+
+  @override
+  State<_AddSwapSheet> createState() => _AddSwapSheetState();
+}
+
+class _AddSwapSheetState extends State<_AddSwapSheet> {
+  final _reasonController = TextEditingController();
+  final _locationController = TextEditingController(text: 'Okul çıkışı');
+  DateTime _originalDate = DateTime.now().add(const Duration(days: 2));
+  DateTime _proposedDate = DateTime.now().add(const Duration(days: 4));
+  TimeOfDay _originalTime = const TimeOfDay(hour: 17, minute: 0);
+  TimeOfDay _proposedTime = const TimeOfDay(hour: 12, minute: 0);
+  double _durationHours = 2;
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    _locationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18, 18, 18, bottom + 18),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SheetTitle(feature: widget.feature),
+            const SizedBox(height: 14),
+            _DateTimeButtons(
+              label: 'Asıl gün',
+              date: _originalDate,
+              time: _originalTime,
+              onDate: () async {
+                final picked = await _pickDate(_originalDate);
+                if (picked != null) setState(() => _originalDate = picked);
+              },
+              onTime: () async {
+                final picked = await _pickTime(_originalTime);
+                if (picked != null) setState(() => _originalTime = picked);
+              },
+            ),
+            const SizedBox(height: 10),
+            _DateTimeButtons(
+              label: 'Önerilen yeni gün',
+              date: _proposedDate,
+              time: _proposedTime,
+              onDate: () async {
+                final picked = await _pickDate(_proposedDate);
+                if (picked != null) setState(() => _proposedDate = picked);
+              },
+              onTime: () async {
+                final picked = await _pickTime(_proposedTime);
+                if (picked != null) setState(() => _proposedTime = picked);
+              },
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _locationController,
+              decoration: const InputDecoration(
+                labelText: 'Konum / teslim noktası',
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _reasonController,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Gerekçe',
+                alignLabelWithHint: true,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Yeni takvim kaydı süresi: ${_durationHours.round()} saat',
+              style: AppTypography.ui(size: 12.5, color: AppColors.inkMute),
+            ),
+            Slider(
+              value: _durationHours,
+              min: 1,
+              max: 8,
+              divisions: 7,
+              label: '${_durationHours.round()} saat',
+              onChanged: (value) => setState(() => _durationHours = value),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _save,
+              icon: const Icon(Icons.swap_horiz_rounded),
+              label: const Text('Takas talebi ve takvim kaydı oluştur'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<DateTime?> _pickDate(DateTime initialDate) => showDatePicker(
+    context: context,
+    initialDate: initialDate,
+    firstDate: DateTime(2020),
+    lastDate: DateTime(2035),
+    locale: const Locale('tr'),
+  );
+
+  Future<TimeOfDay?> _pickTime(TimeOfDay initialTime) =>
+      showTimePicker(context: context, initialTime: initialTime);
+
+  void _save() {
+    final original = _combine(_originalDate, _originalTime);
+    final proposed = _combine(_proposedDate, _proposedTime);
+    final title =
+        '${DateFormat('d MMM', 'tr_TR').format(original)} yerine ${DateFormat('d MMM', 'tr_TR').format(proposed)}';
+    final detail =
+        'Asıl gün: ${DateFormat('d MMM HH:mm', 'tr_TR').format(original)}. Öneri: ${DateFormat('d MMM HH:mm', 'tr_TR').format(proposed)}. ${_reasonController.text.trim()}';
+    Navigator.of(context).pop(
+      _VisionRecordDraft(
+        title: title,
+        detail: detail,
+        status: 'pending',
+        payload: {
+          'original_at': original.toIso8601String(),
+          'proposed_at': proposed.toIso8601String(),
+          'calendar_synced': true,
+        },
+        calendarTitle: 'Gün takası: $title',
+        calendarStartAt: proposed,
+        calendarEndAt: proposed.add(Duration(hours: _durationHours.round())),
+        calendarLocation: _locationController.text.trim(),
+      ),
+    );
+  }
+
+  DateTime _combine(DateTime date, TimeOfDay time) =>
+      DateTime(date.year, date.month, date.day, time.hour, time.minute);
+}
+
+class _AddGeofenceSheet extends StatefulWidget {
+  const _AddGeofenceSheet({required this.feature});
+
+  final VisionFeatureSpec feature;
+
+  @override
+  State<_AddGeofenceSheet> createState() => _AddGeofenceSheetState();
+}
+
+class _AddGeofenceSheetState extends State<_AddGeofenceSheet> {
+  final _placeController = TextEditingController(text: 'Atatürk İlkokulu');
+  final _noteController = TextEditingController();
+  DateTime _date = DateTime.now().add(const Duration(days: 1));
+  TimeOfDay _time = const TimeOfDay(hour: 16, minute: 45);
+  double _radius = 100;
+
+  @override
+  void dispose() {
+    _placeController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18, 18, 18, bottom + 18),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SheetTitle(feature: widget.feature),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _placeController,
+              decoration: const InputDecoration(labelText: 'Teslim noktası'),
+            ),
+            const SizedBox(height: 10),
+            _DateTimeButtons(
+              label: 'Bildirim zamanı',
+              date: _date,
+              time: _time,
+              onDate: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _date,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2035),
+                  locale: const Locale('tr'),
+                );
+                if (picked != null) setState(() => _date = picked);
+              },
+              onTime: () async {
+                final picked = await showTimePicker(
+                  context: context,
+                  initialTime: _time,
+                );
+                if (picked != null) setState(() => _time = picked);
+              },
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Yaklaşma sınırı: ${_radius.round()} metre',
+              style: AppTypography.ui(size: 12.5, color: AppColors.inkMute),
+            ),
+            Slider(
+              value: _radius,
+              min: 50,
+              max: 500,
+              divisions: 9,
+              label: '${_radius.round()} m',
+              onChanged: (value) => setState(() => _radius = value),
+            ),
+            TextField(
+              controller: _noteController,
+              decoration: const InputDecoration(labelText: 'Not'),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _save,
+              icon: const Icon(Icons.notifications_active_outlined),
+              label: const Text('Hatırlatıcıyı kur ve bildir'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _save() {
+    final when = DateTime(
+      _date.year,
+      _date.month,
+      _date.day,
+      _time.hour,
+      _time.minute,
+    );
+    final place = _placeController.text.trim();
+    Navigator.of(context).pop(
+      _VisionRecordDraft(
+        title: '$place teslim hatırlatıcısı',
+        detail:
+            '${DateFormat('d MMM HH:mm', 'tr_TR').format(when)} · ${_radius.round()} m. ${_noteController.text.trim()}',
+        status: 'active',
+        payload: {
+          'place': place,
+          'remind_at': when.toIso8601String(),
+          'radius_meters': _radius.round(),
+        },
+        notificationTitle: 'Teslim hatırlatıcısı kuruldu',
+        notificationBody:
+            '$place için ${DateFormat('HH:mm', 'tr_TR').format(when)} hatırlatıcısı hazır.',
+      ),
+    );
+  }
+}
+
+class _AddWardrobeSheet extends StatefulWidget {
+  const _AddWardrobeSheet({required this.feature});
+
+  final VisionFeatureSpec feature;
+
+  @override
+  State<_AddWardrobeSheet> createState() => _AddWardrobeSheetState();
+}
+
+class _AddWardrobeSheetState extends State<_AddWardrobeSheet> {
+  final _heightController = TextEditingController();
+  final _shoeController = TextEditingController();
+  final _topController = TextEditingController();
+  final _bottomController = TextEditingController();
+  final _needController = TextEditingController();
+
+  @override
+  void dispose() {
+    _heightController.dispose();
+    _shoeController.dispose();
+    _topController.dispose();
+    _bottomController.dispose();
+    _needController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18, 18, 18, bottom + 18),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SheetTitle(feature: widget.feature),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(child: _field(_heightController, 'Boy', '132 cm')),
+                const SizedBox(width: 10),
+                Expanded(child: _field(_shoeController, 'Ayakkabı', '32')),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(child: _field(_topController, 'Üst beden', '8-9 yaş')),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _field(_bottomController, 'Alt beden', '9 yaş'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _needController,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Açık ihtiyaç / not',
+                alignLabelWithHint: true,
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _save,
+              icon: const Icon(Icons.check),
+              label: const Text('Beden kartını güncelle'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _field(TextEditingController controller, String label, String hint) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(labelText: label, hintText: hint),
+    );
+  }
+
+  void _save() {
+    final payload = {
+      'height': _heightController.text.trim(),
+      'shoe': _shoeController.text.trim(),
+      'top_size': _topController.text.trim(),
+      'bottom_size': _bottomController.text.trim(),
+      'need': _needController.text.trim(),
+    };
+    Navigator.of(context).pop(
+      _VisionRecordDraft(
+        title: 'Beden kartı güncellendi',
+        detail:
+            'Boy ${payload['height']}, ayakkabı ${payload['shoe']}. ${payload['need']}',
+        status: 'completed',
+        payload: payload,
+      ),
+    );
+  }
+}
+
+class _AddTeenSheet extends StatefulWidget {
+  const _AddTeenSheet({required this.feature});
+
+  final VisionFeatureSpec feature;
+
+  @override
+  State<_AddTeenSheet> createState() => _AddTeenSheetState();
+}
+
+class _AddTeenSheetState extends State<_AddTeenSheet> {
+  bool _calendar = true;
+  bool _requests = true;
+  bool _handover = false;
+  bool _documents = false;
+  final _noteController = TextEditingController();
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18, 18, 18, bottom + 18),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SheetTitle(feature: widget.feature),
+            const SizedBox(height: 12),
+            _switchTile(
+              'Takvimim',
+              _calendar,
+              (v) => setState(() => _calendar = v),
+            ),
+            _switchTile(
+              'Talep ekle',
+              _requests,
+              (v) => setState(() => _requests = v),
+            ),
+            _switchTile(
+              'Teslim bilgisi',
+              _handover,
+              (v) => setState(() => _handover = v),
+            ),
+            _switchTile(
+              'Seçili belgeler',
+              _documents,
+              (v) => setState(() => _documents = v),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _noteController,
+              decoration: const InputDecoration(labelText: 'Ebeveyn rıza notu'),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _save,
+              icon: const Icon(Icons.verified_user_outlined),
+              label: const Text('Teen erişim talebi oluştur'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _switchTile(String title, bool value, ValueChanged<bool> onChanged) {
+    return SwitchListTile(
+      value: value,
+      onChanged: onChanged,
+      title: Text(title, style: AppTypography.ui(weight: FontWeight.w700)),
+      contentPadding: EdgeInsets.zero,
+    );
+  }
+
+  void _save() {
+    final enabled = <String>[
+      if (_calendar) 'Takvimim',
+      if (_requests) 'Talep ekle',
+      if (_handover) 'Teslim bilgisi',
+      if (_documents) 'Seçili belgeler',
+    ];
+    Navigator.of(context).pop(
+      _VisionRecordDraft(
+        title: 'Teen modu erişim kapsamı',
+        detail:
+            'Açık ekranlar: ${enabled.join(', ')}. ${_noteController.text.trim()}',
+        status: 'pending',
+        payload: {
+          'calendar': _calendar,
+          'requests': _requests,
+          'handover': _handover,
+          'documents': _documents,
+        },
+      ),
+    );
+  }
+}
+
+class _AddDropboxSheet extends StatefulWidget {
+  const _AddDropboxSheet({required this.feature});
+
+  final VisionFeatureSpec feature;
+
+  @override
+  State<_AddDropboxSheet> createState() => _AddDropboxSheetState();
+}
+
+class _AddDropboxSheetState extends State<_AddDropboxSheet> {
+  final _nameController = TextEditingController();
+  final _contactController = TextEditingController();
+  String _category = 'Okul';
+  int _hours = 48;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _contactController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18, 18, 18, bottom + 18),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SheetTitle(feature: widget.feature),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Kim yükleyecek?'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _contactController,
+              decoration: const InputDecoration(
+                labelText: 'E-posta veya telefon',
+              ),
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              initialValue: _category,
+              decoration: const InputDecoration(labelText: 'Belge türü'),
+              items: const [
+                DropdownMenuItem(value: 'Okul', child: Text('Okul')),
+                DropdownMenuItem(value: 'Sağlık', child: Text('Sağlık')),
+                DropdownMenuItem(value: 'Servis', child: Text('Servis')),
+                DropdownMenuItem(value: 'Diğer', child: Text('Diğer')),
+              ],
+              onChanged: (value) => setState(() => _category = value ?? 'Okul'),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Link süresi: $_hours saat',
+              style: AppTypography.ui(size: 12.5, color: AppColors.inkMute),
+            ),
+            Slider(
+              value: _hours.toDouble(),
+              min: 1,
+              max: 168,
+              divisions: 7,
+              label: '$_hours saat',
+              onChanged: (value) => setState(() => _hours = value.round()),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _saving ? null : _save,
+              icon: const Icon(Icons.link_outlined),
+              label: Text(_saving ? 'Link hazirlaniyor...' : 'Link olustur'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _save() async {
+    final name = _nameController.text.trim().isEmpty
+        ? 'Ucuncu kisi'
+        : _nameController.text.trim();
+    setState(() => _saving = true);
+    final link = await AppDataService.createExternalDropboxLink(
+      recipientName: name,
+      contact: _contactController.text,
+      category: _category,
+      expiresInHours: _hours,
+    );
+    if (!mounted) return;
+    Navigator.of(context).pop(
+      _VisionRecordDraft(
+        title: '$name için belge yükleme linki',
+        detail: 'Tür: $_category. Süre: $_hours saat. Link kayıt kartında.',
+        status: 'link_ready',
+        payload: {
+          'recipient': name,
+          'contact': _contactController.text.trim(),
+          'category': _category,
+          'expires_in_hours': _hours,
+          'upload_url': link.uploadUrl,
+          'token': link.token,
+          'link_source': link.source,
+        },
+      ),
+    );
+  }
+}
+
+class _AddPrintoutSheet extends StatefulWidget {
+  const _AddPrintoutSheet({required this.feature});
+
+  final VisionFeatureSpec feature;
+
+  @override
+  State<_AddPrintoutSheet> createState() => _AddPrintoutSheetState();
+}
+
+class _AddPrintoutSheetState extends State<_AddPrintoutSheet> {
+  bool _handover = true;
+  bool _school = true;
+  bool _specialDays = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18, 18, 18, bottom + 18),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SheetTitle(feature: widget.feature),
+          const SizedBox(height: 12),
+          SwitchListTile(
+            value: _handover,
+            onChanged: (v) => setState(() => _handover = v),
+            title: const Text('Teslim günleri'),
+            contentPadding: EdgeInsets.zero,
+          ),
+          SwitchListTile(
+            value: _school,
+            onChanged: (v) => setState(() => _school = v),
+            title: const Text('Okul ve etkinlikler'),
+            contentPadding: EdgeInsets.zero,
+          ),
+          SwitchListTile(
+            value: _specialDays,
+            onChanged: (v) => setState(() => _specialDays = v),
+            title: const Text('Özel günler'),
+            contentPadding: EdgeInsets.zero,
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: _save,
+            icon: const Icon(Icons.preview_outlined),
+            label: const Text('Ön gösterim kaydı oluştur'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _save() {
+    Navigator.of(context).pop(
+      _VisionRecordDraft(
+        title: 'Çocuk takvimi ön gösterimi',
+        detail:
+            'Dahil: ${[if (_handover) 'teslim', if (_school) 'okul', if (_specialDays) 'özel gün'].join(', ')}',
+        status: 'preview',
+        payload: {
+          'handover': _handover,
+          'school': _school,
+          'special_days': _specialDays,
+        },
+      ),
+    );
+  }
+}
+
+class _SheetTitle extends StatelessWidget {
+  const _SheetTitle({required this.feature});
+
+  final VisionFeatureSpec feature;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _FeatureIcon(feature: feature),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                feature.primaryActionLabel,
+                style: AppTypography.display(size: 28, height: 1),
+              ),
+              const SizedBox(height: 3),
+              Text(feature.kicker, style: AppTypography.mono(letter: 1.4)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DateTimeButtons extends StatelessWidget {
+  const _DateTimeButtons({
+    required this.label,
+    required this.date,
+    required this.time,
+    required this.onDate,
+    required this.onTime,
+  });
+
+  final String label;
+  final DateTime date;
+  final TimeOfDay time;
+  final VoidCallback onDate;
+  final VoidCallback onTime;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppTypography.ui(size: 12, weight: FontWeight.w700)),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onDate,
+                icon: const Icon(Icons.calendar_today_outlined),
+                label: Text(DateFormat('d MMM', 'tr_TR').format(date)),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onTime,
+                icon: const Icon(Icons.schedule_outlined),
+                label: Text(time.format(context)),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 class _AddVisionRecordSheet extends StatefulWidget {
   const _AddVisionRecordSheet({required this.feature});
 
@@ -918,11 +2026,25 @@ class _VisionRecordDraft {
     required this.title,
     required this.detail,
     required this.status,
+    this.payload = const {},
+    this.calendarTitle,
+    this.calendarStartAt,
+    this.calendarEndAt,
+    this.calendarLocation,
+    this.notificationTitle,
+    this.notificationBody,
   });
 
   final String title;
   final String detail;
   final String status;
+  final Map<String, dynamic> payload;
+  final String? calendarTitle;
+  final DateTime? calendarStartAt;
+  final DateTime? calendarEndAt;
+  final String? calendarLocation;
+  final String? notificationTitle;
+  final String? notificationBody;
 }
 
 class VisionFeatureSpec {
@@ -1153,7 +2275,7 @@ const visionaryFeatureSpecs = <VisionFeatureSpec>[
     ],
     icon: Icons.favorite_border_rounded,
     tone: AppColors.sageSoft,
-    badge: 'Ana sayfa',
+    badge: 'Profil',
     pillTone: PillTone.sage,
     primaryActionLabel: 'Uyum özeti oluştur',
     defaultTitle: 'Mayıs aile uyum özeti',
@@ -1172,7 +2294,7 @@ const visionaryFeatureSpecs = <VisionFeatureSpec>[
         env: ['SUPABASE_SERVICE_ROLE_KEY'],
       ),
     ],
-    surface: 'home',
+    surface: 'sidebar',
     titleFieldLabel: 'Skor dönemi',
     detailFieldLabel: 'Skoru etkileyen sinyaller',
   ),

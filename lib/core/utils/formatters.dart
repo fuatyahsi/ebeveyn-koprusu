@@ -9,5 +9,6 @@ class AppFormatters {
     locale: 'tr_TR',
     symbol: 'TL',
     decimalDigits: 0,
+    customPattern: '#,##0 ¤',
   );
 }

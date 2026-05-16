@@ -11,6 +11,7 @@ import 'package:ebeveyn_koprusu/features/emergency/presentation/screens/emergenc
 import 'package:ebeveyn_koprusu/features/expenses/presentation/screens/expenses_screen.dart';
 import 'package:ebeveyn_koprusu/features/family/presentation/screens/family_screen.dart';
 import 'package:ebeveyn_koprusu/features/handover/presentation/screens/handover_screen.dart';
+import 'package:ebeveyn_koprusu/features/messages/presentation/screens/messages_screen.dart';
 import 'package:ebeveyn_koprusu/features/onboarding/presentation/screens/welcome_screen.dart';
 import 'package:ebeveyn_koprusu/features/personal_journal/presentation/screens/personal_journal_screen.dart';
 import 'package:ebeveyn_koprusu/features/reports/presentation/screens/reports_screen.dart';
@@ -57,6 +58,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/expenses',
       builder: (context, state) => const ExpensesScreen(),
+    ),
+    GoRoute(
+      path: '/messages',
+      builder: (context, state) => const MessagesScreen(),
     ),
     GoRoute(path: '/family', builder: (context, state) => const FamilyScreen()),
     GoRoute(

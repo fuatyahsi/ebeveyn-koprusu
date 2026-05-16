@@ -22,10 +22,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   int _view = 0; // 0 = month, 1 = list
   bool _loading = false;
   List<CustodyEvent> _events = const [];
+  late final DateTime _visibleMonth;
 
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _visibleMonth = DateTime(now.year, now.month);
     _loadEvents();
   }
 
@@ -43,12 +46,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     }
   }
 
-  Future<void> _addEvent() async {
+  Future<void> _addEvent({DateTime? initialDate}) async {
     final draft = await showModalBottomSheet<_EventDraft>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (context) => const _AddEventSheet(),
+      builder: (context) => _AddEventSheet(initialDate: initialDate),
     );
     if (draft == null) return;
 
@@ -97,11 +100,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         children: [
           ScreenHeader(
             eyebrow: 'Velayet takvimi',
-            title: 'Mayis 2026',
+            title: _calendarMonthTitle(_visibleMonth),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _AddButton(onTap: _loading ? null : _addEvent),
+                _AddButton(onTap: _loading ? null : () => _addEvent()),
                 const SizedBox(width: 8),
                 _MemoryButton(
                   onTap: () => context.push('/visionary/holiday-memory'),
@@ -122,12 +125,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 const ModuleUsageTip(
                   icon: Icons.calendar_month_outlined,
                   text:
-                      'Teslim, görüşme, okul veya özel günleri + ile takvime ekle. Kayıtlar custody_events tablosuna canlı yazılır ve teslim/rapor modülleri aynı veriyi kullanır.',
+                      'Teslim, görüşme, okul veya özel günleri + ile ya da doğrudan takvimde güne dokunarak ekle. Gün takası gibi mutabık kalınan akışlar da takvime otomatik kayıt düşer.',
                 ),
                 const SizedBox(height: 12),
                 const _Legend(),
                 const SizedBox(height: 6),
-                const AppCard(padding: EdgeInsets.all(12), child: _MonthGrid()),
+                AppCard(
+                  padding: const EdgeInsets.all(12),
+                  child: _MonthGrid(
+                    month: _visibleMonth,
+                    onDayTap: (date) => _addEvent(initialDate: date),
+                  ),
+                ),
                 const SizedBox(height: 14),
                 const SectionLabel(label: 'Yaklasan kayitlar'),
                 _UpcomingList(events: _events),
@@ -138,6 +147,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       ),
     );
   }
+}
+
+String _calendarMonthTitle(DateTime month) {
+  final label = DateFormat('MMMM y', 'tr_TR').format(month);
+  return label.isEmpty ? '' : '${label[0].toUpperCase()}${label.substring(1)}';
 }
 
 class _AddButton extends StatelessWidget {
@@ -299,12 +313,22 @@ class _Legend extends StatelessWidget {
 }
 
 class _MonthGrid extends StatelessWidget {
-  const _MonthGrid();
+  const _MonthGrid({required this.month, required this.onDayTap});
+
+  final DateTime month;
+  final ValueChanged<DateTime> onDayTap;
 
   @override
   Widget build(BuildContext context) {
     const weekHeaders = ['P', 'S', 'C', 'P', 'C', 'C', 'P'];
-    final cells = List<int>.generate(35, (i) => i - 1); // -2..32 (offset 2)
+    final firstDay = DateTime(month.year, month.month);
+    final leadingDays = firstDay.weekday - 1;
+    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+    final cellCount = ((leadingDays + daysInMonth + 6) ~/ 7) * 7;
+    final cells = [
+      for (var i = 0; i < cellCount; i++)
+        firstDay.add(Duration(days: i - leadingDays)),
+    ];
 
     return Column(
       children: [
@@ -333,7 +357,12 @@ class _MonthGrid extends StatelessWidget {
           crossAxisSpacing: 3,
           children: [
             for (var i = 0; i < cells.length; i++)
-              _DayBox(index: i, raw: cells[i]),
+              _DayBox(
+                index: i,
+                date: cells[i],
+                month: month,
+                onDayTap: onDayTap,
+              ),
           ],
         ),
       ],
@@ -342,20 +371,27 @@ class _MonthGrid extends StatelessWidget {
 }
 
 class _DayBox extends StatelessWidget {
-  const _DayBox({required this.index, required this.raw});
+  const _DayBox({
+    required this.index,
+    required this.date,
+    required this.month,
+    required this.onDayTap,
+  });
   final int index;
-  final int raw;
+  final DateTime date;
+  final DateTime month;
+  final ValueChanged<DateTime> onDayTap;
 
   @override
   Widget build(BuildContext context) {
-    final inMonth = raw >= 1 && raw <= 31;
-    final day = inMonth ? raw : (raw < 1 ? 30 + raw : raw - 31);
+    final inMonth = date.year == month.year && date.month == month.month;
+    final day = date.day;
     final dow = index % 7;
     final week = index ~/ 7;
     final weekend = dow >= 5;
     final isDad = inMonth && weekend && (week == 0 || week == 2);
-    final isToday = inMonth && raw == 14;
-    final isHandover = inMonth && [2, 4, 16, 18].contains(raw);
+    final isToday = inMonth && DateUtils.isSameDay(date, DateTime.now());
+    final isHandover = inMonth && [2, 4, 16, 18].contains(day);
 
     final bg = !inMonth
         ? Colors.transparent
@@ -372,35 +408,37 @@ class _DayBox extends StatelessWidget {
         ? const Color(0xFF7B5B33)
         : AppColors.sage;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: bg,
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(7),
+      child: InkWell(
+        onTap: inMonth ? () => onDayTap(date) : null,
         borderRadius: BorderRadius.circular(7),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Text(
-            '$day',
-            style: AppTypography.ui(
-              size: 13,
-              color: fg,
-              weight: isToday ? FontWeight.w600 : FontWeight.w500,
-            ),
-          ),
-          if (isHandover)
-            Positioned(
-              bottom: 4,
-              child: Container(
-                width: 5,
-                height: 5,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isToday ? AppColors.paper : AppColors.ink,
-                ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Text(
+              '$day',
+              style: AppTypography.ui(
+                size: 13,
+                color: fg,
+                weight: isToday ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
-        ],
+            if (isHandover)
+              Positioned(
+                bottom: 4,
+                child: Container(
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isToday ? AppColors.paper : AppColors.ink,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -504,7 +542,9 @@ class _UpcomingRow extends StatelessWidget {
 }
 
 class _AddEventSheet extends StatefulWidget {
-  const _AddEventSheet();
+  const _AddEventSheet({this.initialDate});
+
+  final DateTime? initialDate;
 
   @override
   State<_AddEventSheet> createState() => _AddEventSheetState();
@@ -514,8 +554,14 @@ class _AddEventSheetState extends State<_AddEventSheet> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController(text: 'Teslim kaydı');
   final _locationController = TextEditingController();
-  DateTime _date = DateTime.now().add(const Duration(days: 1));
+  late DateTime _date;
   TimeOfDay _time = const TimeOfDay(hour: 17, minute: 0);
+
+  @override
+  void initState() {
+    super.initState();
+    _date = widget.initialDate ?? DateTime.now().add(const Duration(days: 1));
+  }
 
   @override
   void dispose() {

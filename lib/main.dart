@@ -1,5 +1,6 @@
 import 'package:ebeveyn_koprusu/app/app.dart';
 import 'package:ebeveyn_koprusu/core/config/app_config.dart';
+import 'package:ebeveyn_koprusu/core/services/local_notification_service.dart';
 import 'package:ebeveyn_koprusu/core/services/supabase_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,7 @@ Future<void> main() async {
 
   const config = AppConfig.fromEnvironment();
   await initializeDateFormatting('tr_TR');
+  await LocalNotificationService.initialize();
   await SupabaseService.initializeIfConfigured(config);
 
   runApp(

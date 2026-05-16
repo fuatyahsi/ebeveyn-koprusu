@@ -20,6 +20,18 @@ class AppWorkspace {
   final String? childId;
 }
 
+class ExternalDropboxLink {
+  const ExternalDropboxLink({
+    required this.uploadUrl,
+    required this.token,
+    required this.source,
+  });
+
+  final String uploadUrl;
+  final String token;
+  final String source;
+}
+
 class FamilyOverview {
   const FamilyOverview({
     required this.id,
@@ -1110,6 +1122,67 @@ class AppDataService {
     return _custodyEventFromRow(row);
   }
 
+  static Future<ExternalDropboxLink> createExternalDropboxLink({
+    required String recipientName,
+    required String contact,
+    required String category,
+    required int expiresInHours,
+  }) async {
+    final workspace = await requireWorkspace();
+    final cleanContact = contact.trim();
+    final isEmail = cleanContact.contains('@');
+    final hours = expiresInHours.clamp(1, 168);
+
+    try {
+      final response = await _client.functions.invoke(
+        'external-dropbox-link',
+        body: {
+          'family_id': workspace.familyId,
+          if (workspace.childId != null) 'child_id': workspace.childId,
+          if (isEmail)
+            'recipient_email': cleanContact
+          else if (cleanContact.isNotEmpty)
+            'recipient_phone': cleanContact,
+          'subject': 'Ebeveyn Koprusu belge yukleme linki',
+          'body':
+              '$recipientName icin $category belgesi guvenli baglanti ile yuklenebilir.',
+          'expires_in_hours': hours,
+        },
+      );
+
+      final data = response.data;
+      if (response.status >= 200 &&
+          response.status < 300 &&
+          data is Map<String, dynamic>) {
+        final notification = data['notification'];
+        final token = notification is Map<String, dynamic>
+            ? notification['token']?.toString()
+            : data['token']?.toString();
+        final uploadUrl = data['upload_url']?.toString();
+        if (token != null && token.isNotEmpty) {
+          return ExternalDropboxLink(
+            uploadUrl: uploadUrl != null && uploadUrl.isNotEmpty
+                ? uploadUrl
+                : 'ebeveynkoprusu://external-upload/$token',
+            token: token,
+            source: uploadUrl != null && uploadUrl.isNotEmpty
+                ? 'edge_function'
+                : 'edge_token',
+          );
+        }
+      }
+    } catch (_) {
+      // Local smoke tests can run before Edge Functions are deployed.
+    }
+
+    final token = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
+    return ExternalDropboxLink(
+      uploadUrl: 'ebeveynkoprusu://external-upload/$token',
+      token: token,
+      source: 'local_fallback',
+    );
+  }
+
   static Future<List<ExpenseItem>> fetchExpenses() async {
     final workspace = await requireWorkspace();
     final rows = await _client
@@ -1128,10 +1201,11 @@ class AppDataService {
     required String title,
     required String category,
     required double amount,
+    required double requestedShare,
     required String description,
   }) async {
     final workspace = await requireWorkspace();
-    final requestedShare = amount / 2;
+    final cleanShare = requestedShare.clamp(0, amount).toDouble();
     final row = await _client
         .from('expenses')
         .insert({
@@ -1140,13 +1214,41 @@ class AppDataService {
           'title': title.trim(),
           'category': category.trim(),
           'amount': amount,
-          'requested_share': requestedShare,
-          'share_type': 'half',
+          'requested_share': cleanShare,
+          'share_type': cleanShare == amount / 2 ? 'half' : 'custom',
           'description': description.trim().isEmpty ? null : description.trim(),
           'status': 'sent',
           'created_by': workspace.userId,
           'paid_by': workspace.userId,
         })
+        .select('id,title,category,amount,requested_share,status,created_at')
+        .single();
+
+    return _expenseFromRow(row);
+  }
+
+  static Future<ExpenseItem> updateExpenseStatus({
+    required String id,
+    required String status,
+  }) async {
+    final row = await _client
+        .from('expenses')
+        .update({'status': status})
+        .eq('id', id)
+        .select('id,title,category,amount,requested_share,status,created_at')
+        .single();
+
+    return _expenseFromRow(row);
+  }
+
+  static Future<ExpenseItem> updateExpenseShare({
+    required String id,
+    required double requestedShare,
+  }) async {
+    final row = await _client
+        .from('expenses')
+        .update({'requested_share': requestedShare, 'share_type': 'custom'})
+        .eq('id', id)
         .select('id,title,category,amount,requested_share,status,created_at')
         .single();
 

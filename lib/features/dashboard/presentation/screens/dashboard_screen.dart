@@ -12,13 +12,14 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final today = DateTime.now();
     return SafeArea(
       bottom: false,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
         children: [
           ScreenHeader(
-            eyebrow: 'Salı · 14 Mayıs',
+            eyebrow: _todayEyebrow(today),
             title: 'Bugün',
             trailing: _RoundIconButton(
               icon: Icons.add,
@@ -37,11 +38,11 @@ class DashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 const _HarmonyScoreCard(),
                 const SizedBox(height: 16),
-                const SectionLabel(label: 'Bugün için'),
-                const _QuickActions(),
-                const SizedBox(height: 12),
                 const SectionLabel(label: 'Bekleyen'),
                 const _PendingList(),
+                const SizedBox(height: 14),
+                const SectionLabel(label: 'Sık kullanılan'),
+                const _QuickActions(),
               ],
             ),
           ),
@@ -49,6 +50,33 @@ class DashboardScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+String _todayEyebrow(DateTime date) {
+  const days = [
+    'PAZARTESI',
+    'SALI',
+    'CARSAMBA',
+    'PERSEMBE',
+    'CUMA',
+    'CUMARTESI',
+    'PAZAR',
+  ];
+  const months = [
+    'OCAK',
+    'SUBAT',
+    'MART',
+    'NISAN',
+    'MAYIS',
+    'HAZIRAN',
+    'TEMMUZ',
+    'AGUSTOS',
+    'EYLUL',
+    'EKIM',
+    'KASIM',
+    'ARALIK',
+  ];
+  return '${days[date.weekday - 1]} · ${date.day} ${months[date.month - 1]}';
 }
 
 class _HarmonyScoreCard extends StatelessWidget {
@@ -198,32 +226,45 @@ class _ChildHero extends StatelessWidget {
 class _WeekStrip extends StatelessWidget {
   const _WeekStrip();
 
-  static const _days = <(String, String, String)>[
-    ('Pzt', 'A', 'sage'),
-    ('Sal', 'A', 'today'),
-    ('Çar', 'A', 'sage'),
-    ('Per', 'A', 'sage'),
-    ('Cum', '→B', 'ochre'),
-    ('Cmt', 'B', 'ochre'),
-    ('Paz', 'B', 'ochre'),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final monday = today.subtract(Duration(days: today.weekday - 1));
+    final days = [
+      for (var i = 0; i < 7; i++) monday.add(Duration(days: i)),
+    ];
+
     return Row(
       children: [
-        for (var i = 0; i < _days.length; i++) ...[
+        for (var i = 0; i < days.length; i++) ...[
           Expanded(
-            child: _DayCell(
-              day: _days[i].$1,
-              who: _days[i].$2,
-              tone: _days[i].$3,
+            child: Builder(
+              builder: (context) {
+                final date = days[i];
+                final isToday = DateUtils.isSameDay(date, today);
+                final isHandover = date.weekday == DateTime.friday;
+                final isOtherParent =
+                    date.weekday == DateTime.saturday ||
+                    date.weekday == DateTime.sunday;
+                return _DayCell(
+                  day: _shortWeekday(date),
+                  who: isHandover ? '->B' : (isOtherParent ? 'B' : 'A'),
+                  tone: isToday
+                      ? 'today'
+                      : (isHandover || isOtherParent ? 'ochre' : 'sage'),
+                );
+              },
             ),
           ),
-          if (i < _days.length - 1) const SizedBox(width: 6),
+          if (i < days.length - 1) const SizedBox(width: 6),
         ],
       ],
     );
+  }
+
+  String _shortWeekday(DateTime date) {
+    const labels = ['Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt', 'Paz'];
+    return labels[date.weekday - 1];
   }
 }
 
@@ -391,6 +432,33 @@ class _QuickActions extends StatelessWidget {
   static const _actions = <(_QA,)>[
     (
       _QA(
+        'Takvim',
+        Icons.calendar_month_outlined,
+        AppColors.sage,
+        AppColors.sageSoft,
+        '/calendar',
+      ),
+    ),
+    (
+      _QA(
+        'Masraf',
+        Icons.receipt_long_outlined,
+        AppColors.ochre,
+        AppColors.ochreSoft,
+        '/expenses',
+      ),
+    ),
+    (
+      _QA(
+        'Mesaj',
+        Icons.forum_outlined,
+        AppColors.ink,
+        AppColors.paperWhite,
+        '/messages',
+      ),
+    ),
+    (
+      _QA(
         'Gün takası',
         Icons.swap_horiz_rounded,
         AppColors.sage,
@@ -400,29 +468,20 @@ class _QuickActions extends StatelessWidget {
     ),
     (
       _QA(
-        'Beden kartı',
-        Icons.child_friendly_outlined,
-        AppColors.sage,
-        AppColors.paperWhite,
-        '/visionary/wardrobe',
-      ),
-    ),
-    (
-      _QA(
-        'Banka taslağı',
-        Icons.account_balance_outlined,
-        AppColors.ochre,
-        AppColors.ochreSoft,
-        '/visionary/banking',
-      ),
-    ),
-    (
-      _QA(
-        'Evrak köprüsü',
+        'Evrak',
         Icons.forward_to_inbox_outlined,
         AppColors.ink,
         AppColors.paperWhite,
         '/visionary/dropbox',
+      ),
+    ),
+    (
+      _QA(
+        'Teslim',
+        Icons.location_searching_outlined,
+        AppColors.ochre,
+        AppColors.ochreSoft,
+        '/visionary/geofence',
       ),
     ),
   ];
@@ -430,12 +489,12 @@ class _QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GridView.count(
-      crossAxisCount: 2,
+      crossAxisCount: 3,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 10,
-      mainAxisSpacing: 10,
-      childAspectRatio: 2.45,
+      crossAxisSpacing: 8,
+      mainAxisSpacing: 8,
+      childAspectRatio: 1.08,
       children: [
         for (final a in _actions)
           Material(
@@ -445,7 +504,7 @@ class _QuickActions extends StatelessWidget {
               onTap: () => context.push(a.$1.route),
               borderRadius: BorderRadius.circular(12),
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.line),
@@ -454,8 +513,8 @@ class _QuickActions extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 30,
-                      height: 30,
+                      width: 28,
+                      height: 28,
                       decoration: BoxDecoration(
                         color: AppColors.paperWhite,
                         borderRadius: BorderRadius.circular(10),
@@ -467,7 +526,7 @@ class _QuickActions extends StatelessWidget {
                     Text(
                       a.$1.label,
                       style: AppTypography.ui(
-                        size: 13,
+                        size: 11.5,
                         weight: FontWeight.w600,
                       ),
                     ),
@@ -493,20 +552,28 @@ class _QA {
 class _PendingList extends StatelessWidget {
   const _PendingList();
 
-  static const _items = <(String, String, PillTone, String)>[
+  static const _items = <(String, String, PillTone, String, String)>[
     (
-      'Servis ücreti — 1.600 ₺',
+      'Servis ücreti — 1.600 TL',
       'Onayını bekliyor · 2 gün kaldı',
       PillTone.ochre,
       'Bekliyor',
+      '/expenses',
     ),
     (
       'Doktor randevusu onayı',
       'Karar talebi · Baba gönderdi',
       PillTone.sage,
       'Karar',
+      '/decisions',
     ),
-    ('Yaz tatili planı', 'İtiraz açık · 4 gün önce', PillTone.terra, 'İtiraz'),
+    (
+      'Yaz tatili planı',
+      'İtiraz açık · 4 gün önce',
+      PillTone.terra,
+      'İtiraz',
+      '/disputes',
+    ),
   ];
 
   @override
@@ -516,34 +583,42 @@ class _PendingList extends StatelessWidget {
       child: Column(
         children: [
           for (var i = 0; i < _items.length; i++) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _items[i].$1,
-                          style: AppTypography.ui(
-                            size: 13.5,
-                            weight: FontWeight.w500,
+            InkWell(
+              onTap: () => context.push(_items[i].$5),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _items[i].$1,
+                            style: AppTypography.ui(
+                              size: 13.5,
+                              weight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _items[i].$2,
-                          style: AppTypography.ui(
-                            size: 11.5,
-                            color: AppColors.inkMute,
+                          const SizedBox(height: 2),
+                          Text(
+                            _items[i].$2,
+                            style: AppTypography.ui(
+                              size: 11.5,
+                              color: AppColors.inkMute,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  AppPill(label: _items[i].$4, tone: _items[i].$3),
-                ],
+                    AppPill(label: _items[i].$4, tone: _items[i].$3),
+                    const SizedBox(width: 6),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.inkMute,
+                    ),
+                  ],
+                ),
               ),
             ),
             if (i < _items.length - 1) const Divider(height: 1),

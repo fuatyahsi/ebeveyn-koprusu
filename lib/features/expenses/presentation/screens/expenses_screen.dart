@@ -59,6 +59,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         title: draft.title,
         category: draft.category,
         amount: draft.amount,
+        requestedShare: draft.requestedShare,
         description: draft.description,
       );
       if (!mounted) return;
@@ -69,6 +70,64 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+    } catch (error) {
+      _showError(error);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _updateExpenseStatus(
+    ExpenseItem item,
+    ExpenseStatus status,
+  ) async {
+    setState(() => _loading = true);
+    try {
+      final updated = await AppDataService.updateExpenseStatus(
+        id: item.id,
+        status: switch (status) {
+          ExpenseStatus.accepted => 'accepted',
+          ExpenseStatus.disputed => 'disputed',
+          ExpenseStatus.paid => 'paid',
+          ExpenseStatus.overdue => 'overdue',
+          ExpenseStatus.sent => 'sent',
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _items = [
+          for (final current in _items)
+            if (current.id == updated.id) updated else current,
+        ];
+      });
+    } catch (error) {
+      _showError(error);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _updateExpenseShare(ExpenseItem item) async {
+    final share = await showModalBottomSheet<double>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => _UpdateShareSheet(item: item),
+    );
+    if (share == null) return;
+    setState(() => _loading = true);
+    try {
+      final updated = await AppDataService.updateExpenseShare(
+        id: item.id,
+        requestedShare: share,
+      );
+      if (!mounted) return;
+      setState(() {
+        _items = [
+          for (final current in _items)
+            if (current.id == updated.id) updated else current,
+        ];
+      });
     } catch (error) {
       _showError(error);
     } finally {
@@ -122,7 +181,11 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                     onChanged: (i) => setState(() => _filter = i),
                   ),
                   const SizedBox(height: 14),
-                  _ExpenseList(items: filtered),
+                  _ExpenseList(
+                    items: filtered,
+                    onStatus: _updateExpenseStatus,
+                    onShare: _updateExpenseShare,
+                  ),
                 ],
               ),
             ),
@@ -403,9 +466,15 @@ class _FilterChip extends StatelessWidget {
 }
 
 class _ExpenseList extends StatelessWidget {
-  const _ExpenseList({required this.items});
+  const _ExpenseList({
+    required this.items,
+    required this.onStatus,
+    required this.onShare,
+  });
 
   final List<ExpenseItem> items;
+  final void Function(ExpenseItem item, ExpenseStatus status) onStatus;
+  final void Function(ExpenseItem item) onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -423,7 +492,7 @@ class _ExpenseList extends StatelessWidget {
       child: Column(
         children: [
           for (var i = 0; i < items.length; i++) ...[
-            _ExpenseRow(item: items[i]),
+            _ExpenseRow(item: items[i], onStatus: onStatus, onShare: onShare),
             if (i < items.length - 1) const Divider(height: 1),
           ],
         ],
@@ -433,8 +502,14 @@ class _ExpenseList extends StatelessWidget {
 }
 
 class _ExpenseRow extends StatelessWidget {
-  const _ExpenseRow({required this.item});
+  const _ExpenseRow({
+    required this.item,
+    required this.onStatus,
+    required this.onShare,
+  });
   final ExpenseItem item;
+  final void Function(ExpenseItem item, ExpenseStatus status) onStatus;
+  final void Function(ExpenseItem item) onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -452,50 +527,113 @@ class _ExpenseRow extends StatelessWidget {
       _ => AppColors.inkSoft,
     };
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(10),
+    return InkWell(
+      onTap: () => _openActions(context),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(_iconFor(item.category), size: 16, color: iconFg),
             ),
-            child: Icon(_iconFor(item.category), size: 16, color: iconFg),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    style: AppTypography.ui(
+                      size: 13.5,
+                      weight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${item.category} · talep ${AppFormatters.currency.format(item.requestedShare)}',
+                    style: AppTypography.ui(size: 11, color: AppColors.inkMute),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  item.title,
-                  style: AppTypography.ui(size: 13.5, weight: FontWeight.w500),
+                  AppFormatters.currency.format(item.amount),
+                  style: AppTypography.display(size: 17, height: 1),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  '${item.category} · talep ${AppFormatters.currency.format(item.requestedShare)}',
-                  style: AppTypography.ui(size: 11, color: AppColors.inkMute),
-                ),
+                const SizedBox(height: 5),
+                AppPill(label: _labelFor(item.status), tone: tone),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                AppFormatters.currency.format(item.amount),
-                style: AppTypography.display(size: 17, height: 1),
-              ),
-              const SizedBox(height: 5),
-              AppPill(label: _labelFor(item.status), tone: tone),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _openActions(BuildContext context) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(item.title, style: AppTypography.display(size: 28)),
+              const SizedBox(height: 6),
+              Text(
+                'Talep edilen pay: ${AppFormatters.currency.format(item.requestedShare)}',
+                style: AppTypography.ui(color: AppColors.inkMute),
+              ),
+              const SizedBox(height: 14),
+              _ActionTile(
+                icon: Icons.check_circle_outline,
+                label: 'Kabul et',
+                onTap: () => Navigator.of(context).pop('accepted'),
+              ),
+              _ActionTile(
+                icon: Icons.payments_outlined,
+                label: 'Ödendi olarak işaretle',
+                onTap: () => Navigator.of(context).pop('paid'),
+              ),
+              _ActionTile(
+                icon: Icons.report_gmailerrorred_outlined,
+                label: 'İtiraz et / reddet',
+                onTap: () => Navigator.of(context).pop('disputed'),
+              ),
+              _ActionTile(
+                icon: Icons.edit_outlined,
+                label: 'Talep edilen payı güncelle',
+                onTap: () => Navigator.of(context).pop('share'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (action == null) return;
+    if (action == 'share') {
+      onShare(item);
+      return;
+    }
+    final status = switch (action) {
+      'accepted' => ExpenseStatus.accepted,
+      'paid' => ExpenseStatus.paid,
+      'disputed' => ExpenseStatus.disputed,
+      _ => ExpenseStatus.sent,
+    };
+    onStatus(item, status);
   }
 
   IconData _iconFor(String category) {
@@ -531,6 +669,53 @@ class _ExpenseRow extends StatelessWidget {
   }
 }
 
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: AppColors.paperWhite,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, color: AppColors.sage),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: AppTypography.ui(weight: FontWeight.w700),
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _AddExpenseSheet extends StatefulWidget {
   const _AddExpenseSheet();
 
@@ -542,6 +727,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
+  final _requestedShareController = TextEditingController();
   final _descriptionController = TextEditingController();
   String _category = 'Okul';
 
@@ -549,6 +735,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
   void dispose() {
     _titleController.dispose();
     _amountController.dispose();
+    _requestedShareController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
@@ -594,11 +781,39 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
               controller: _amountController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(labelText: 'Tutar'),
+              onChanged: _syncDefaultShare,
               validator: (value) {
                 final amount = _parseAmount(value ?? '');
                 if (amount <= 0) return 'Geçerli bir tutar gir.';
                 return null;
               },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _requestedShareController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Karşı taraftan istenecek pay',
+                helperText: 'Yarı yarıya olmak zorunda değil.',
+              ),
+              validator: (value) {
+                final amount = _parseAmount(_amountController.text);
+                final share = _parseAmount(value ?? '');
+                if (share < 0 || share > amount) {
+                  return 'Pay 0 ile toplam tutar arasında olmalı.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                _SharePreset(label: '%0', onTap: () => _setShareRate(0)),
+                _SharePreset(label: '%25', onTap: () => _setShareRate(0.25)),
+                _SharePreset(label: '%50', onTap: () => _setShareRate(0.5)),
+                _SharePreset(label: '%100', onTap: () => _setShareRate(1)),
+              ],
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -630,9 +845,23 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
         title: _titleController.text,
         category: _category,
         amount: _parseAmount(_amountController.text),
+        requestedShare: _parseAmount(_requestedShareController.text),
         description: _descriptionController.text,
       ),
     );
+  }
+
+  void _syncDefaultShare(String input) {
+    if (_requestedShareController.text.trim().isNotEmpty) return;
+    final amount = _parseAmount(input);
+    if (amount > 0) {
+      _requestedShareController.text = (amount / 2).round().toString();
+    }
+  }
+
+  void _setShareRate(double rate) {
+    final amount = _parseAmount(_amountController.text);
+    _requestedShareController.text = (amount * rate).round().toString();
   }
 
   double _parseAmount(String input) {
@@ -655,16 +884,93 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
   }
 }
 
+class _SharePreset extends StatelessWidget {
+  const _SharePreset({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(onPressed: onTap, child: Text(label));
+  }
+}
+
+class _UpdateShareSheet extends StatefulWidget {
+  const _UpdateShareSheet({required this.item});
+
+  final ExpenseItem item;
+
+  @override
+  State<_UpdateShareSheet> createState() => _UpdateShareSheetState();
+}
+
+class _UpdateShareSheetState extends State<_UpdateShareSheet> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.item.requestedShare.round().toString(),
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18, 18, 18, bottom + 18),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Payı güncelle', style: AppTypography.display(size: 30)),
+          const SizedBox(height: 10),
+          Text(
+            'Toplam: ${AppFormatters.currency.format(widget.item.amount)}',
+            style: AppTypography.ui(color: AppColors.inkMute),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _controller,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Karşı taraftan istenecek pay',
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: () {
+              final value =
+                  double.tryParse(
+                    _controller.text.trim().replaceAll(',', '.'),
+                  ) ??
+                  0;
+              if (value < 0 || value > widget.item.amount) return;
+              Navigator.of(context).pop(value);
+            },
+            icon: const Icon(Icons.check),
+            label: const Text('Güncelle'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ExpenseDraft {
   const _ExpenseDraft({
     required this.title,
     required this.category,
     required this.amount,
+    required this.requestedShare,
     required this.description,
   });
 
   final String title;
   final String category;
   final double amount;
+  final double requestedShare;
   final String description;
 }
