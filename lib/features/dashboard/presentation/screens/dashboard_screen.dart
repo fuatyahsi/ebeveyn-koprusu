@@ -230,9 +230,7 @@ class _WeekStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final today = DateUtils.dateOnly(DateTime.now());
     final monday = today.subtract(Duration(days: today.weekday - 1));
-    final days = [
-      for (var i = 0; i < 7; i++) monday.add(Duration(days: i)),
-    ];
+    final days = [for (var i = 0; i < 7; i++) monday.add(Duration(days: i))];
 
     return Row(
       children: [
